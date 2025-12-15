@@ -2,59 +2,53 @@
 <html>
 
 <head>
-  <meta charset="utf-8">
-  <title>Chômeurs en Ile de France</title>
-  <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <style>
-    #map {
-      width: 600px;
-      height: 600px;
-    }
-  </style>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script>
-    "use strict";
+    <meta charset="utf-8">
+    <title>Chômeurs en Ile de France</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <style>
+        #map {
+            width: 600px;
+            height: 600px;
+        }
+    </style>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script>
+        "use strict";
 
-    function buildLayer(map, data) {
-      let geoLayer;
-      if (geoLayer) geoLayer.remove();
+        function buildLayer(map, data) {
+            let geoLayer;
+            if (geoLayer) geoLayer.remove();
 
-      geoLayer = L.geoJSON(data);
+            geoLayer = L.geoJSON(data);
 
-      geoLayer.addTo(map);
-    }
+            geoLayer.addTo(map);
+        }
 
-    window.onload = async () => {
-      let year = 2009;
+        window.onload = async () => {
+            let map = L.map('map', {
+                center: [48, 0],
+                zoom: 9
+            });
 
-      let map = L.map('map', {
-        center: [48.856667, 2.352222],
-        zoom: 11
-      });
+            var Jawg_Dark = L.tileLayer('https://tile.jawg.io/jawg-dark/{z}/{x}/{y}{r}.png?access-token={accessToken}', {
+                attribution: '<a href="https://jawg.io" title="Tiles Courtesy of Jawg Maps" target="_blank">&copy; <b>Jawg</b>Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                minZoom: 0,
+                maxZoom: 22,
+                accessToken: '<your accessToken>'
+            });
 
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 15,
-        attribution: '&copy; OpenStreetMap'
-      }).addTo(map);
+            Jawg_Dark.addTo(map);
+            let response = await fetch("data/ufo_sightings.csv");
+            let data = await response.json();
 
-      let response = await fetch("chomeurs-en-ile-de-france.geojson");
-      let data = await response.json();
-      let max = maxChom2(data);
-
-      buildLayer(map, data, max, year);
-
-      let select = document.getElementById("year");
-      select.onchange = e => {
-        year = e.target.value;
-        buildLayer(map, data, max, year);   // rebuild the layer with correct values
-      };
-    };
-  </script>
+            buildLayer(map, data);
+        };
+    </script>
 </head>
 
 <body>
-  <div id="map"></div>
+    <div id="map"></div>
 </body>
 
 </html>
