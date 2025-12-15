@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>Chômeurs en Ile de France</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <style>
+    #map {
+      width: 600px;
+      height: 600px;
+    }
+  </style>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    "use strict";
+
+    function maxChom2(data) {
+      return data.features.reduce((acc, element) =>
+        Math.max(acc, element.properties.chom2009), 0);
+    }
+
+    function toSurface(x) {
+      return 2 * Math.PI * x;
+    }
+
+    function fromSurface(s) {
+      return s / (2 * Math.PI);
+    }
+
+    function buildLayer(map, data, max, year) {
+      let geoLayer;
+      if (geoLayer) geoLayer.remove();
+
+      geoLayer = L.geoJSON(data, {
+        pointToLayer: (feature, coordinates) => {
+          let value = feature.properties["chom" + year];
+
+          let marker = L.circle(coordinates, {
+            radius: 40 * fromSurface((value / max) * toSurface(20))
+          });
+          return marker;
+        },
+        filter: feature => feature.properties["chom" + year] > 1000
+      });
+
+      geoLayer.addTo(map);
+    }
+
+    window.onload = async () => {
+      let year = 2009;
+
+      let map = L.map('map', {
+        center: [48.856667, 2.352222],
+        zoom: 11
+      });
+
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 15,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+
+      let response = await fetch("chomeurs-en-ile-de-france.geojson");
+      let data = await response.json();
+      let max = maxChom2(data);
+
+      buildLayer(map, data, max, year);
+
+      let select = document.getElementById("year");
+      select.onchange = e => {
+        year = e.target.value;
+        buildLayer(map, data, max, year);   // rebuild the layer with correct values
+      };
+    };
+  </script>
+</head>
+
+<body>
+  <div>
+    <label for="year">Year</label>
+    <select id="year">
+      <option value="2009">2009</option>
+      <option value="2019">2019</option>
+    </select>
+  </div>
+  <div id="map"></div>
+</body>
+
+</html>
