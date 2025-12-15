@@ -16,34 +16,11 @@
   <script>
     "use strict";
 
-    function maxChom2(data) {
-      return data.features.reduce((acc, element) =>
-        Math.max(acc, element.properties.chom2009), 0);
-    }
-
-    function toSurface(x) {
-      return 2 * Math.PI * x;
-    }
-
-    function fromSurface(s) {
-      return s / (2 * Math.PI);
-    }
-
-    function buildLayer(map, data, max, year) {
+    function buildLayer(map, data) {
       let geoLayer;
       if (geoLayer) geoLayer.remove();
 
-      geoLayer = L.geoJSON(data, {
-        pointToLayer: (feature, coordinates) => {
-          let value = feature.properties["chom" + year];
-
-          let marker = L.circle(coordinates, {
-            radius: 40 * fromSurface((value / max) * toSurface(20))
-          });
-          return marker;
-        },
-        filter: feature => feature.properties["chom" + year] > 1000
-      });
+      geoLayer = L.geoJSON(data);
 
       geoLayer.addTo(map);
     }
@@ -77,13 +54,6 @@
 </head>
 
 <body>
-  <div>
-    <label for="year">Year</label>
-    <select id="year">
-      <option value="2009">2009</option>
-      <option value="2019">2019</option>
-    </select>
-  </div>
   <div id="map"></div>
 </body>
 
