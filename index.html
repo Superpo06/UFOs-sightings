@@ -9,37 +9,36 @@
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
     <style>
- #map {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    height: 100%;
-}
-</style>
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script>
         "use strict";
 
+        /* CSV ➜ GeoJSON */
         function fromCSVtoJSON(csvText) {
             let lines = csvText.trim().split("\n");
-
             let features = [];
 
             for (let line of lines) {
                 let cols = line.split(";");
 
-                // Skip invalid lines
-                if (cols.length < 14) continue;
+                if (cols.length < 16) continue;
 
-                let lat = parseFloat(cols[10]);
-                let lon = parseFloat(cols[11]);
+                let lat = parseFloat(cols[11]);
+                let lon = parseFloat(cols[12]);
 
                 if (isNaN(lat) || isNaN(lon)) continue;
 
-                let feature = {
+                features.push({
                     type: "Feature",
                     geometry: {
                         type: "Point",
@@ -57,20 +56,39 @@
                         country: cols[8],
                         state: cols[9],
                         city: cols[10],
-                        shape: cols[12],
-                        duration: cols[13],
-                        description: cols.slice(14).join(";") // rest of line (may contain ;)
+                        shape: cols[13],
+                        duration: cols[14],
+                        description: cols.slice(15).join(";")
                     }
-                };
-
-                features.push(feature);
+                });
             }
 
             return {
                 type: "FeatureCollection",
-                features: features
+                features
             };
         }
+
+        /* Add markers */
+        function addMarkers(map, jsondata) {
+            for (let f of jsondata.features) {
+                if (f.properties.country_code == "LTU") {
+                    let lat = f.geometry.coordinates[1];
+                    let lon = f.geometry.coordinates[0];
+
+                    let popup = `
+                <b>${f.properties.city}, ${f.properties.state}</b><br>
+                <b>Shape:</b> ${f.properties.shape}<br>
+                <b>Duration:</b> ${f.properties.duration}<br><br>
+                ${f.properties.description}
+            `;
+
+                    L.marker([lat, lon]).addTo(map).bindPopup(popup);
+                }
+            }
+        }
+
+
 
         function buildLayer(map, data) {
             let geoLayer;
@@ -81,7 +99,7 @@
             geoLayer.addTo(map);
         }
 
-        window.onload = async () => {
+        window.onload = async() => {
             let mapBounds = L.latLngBounds(
                 L.latLng(-90, -180),
                 L.latLng(90, 180)
@@ -107,7 +125,7 @@
             let csvTextData = await response.text();
             let jsondata = await fromCSVtoJSON(csvTextData);
 
-            buildLayer(map, jsondata);
+            addMarkers(map, jsondata);
         };
     </script>
 </head>
