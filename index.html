@@ -73,7 +73,7 @@
         function addMarkers(map, jsondata) {
             let i = 0;
             for (let f of jsondata.features) {
-                if (i == 0) break;
+                if (i == 1000) break;
                 let lat = f.geometry.coordinates[1];
                 let lon = f.geometry.coordinates[0];
 
