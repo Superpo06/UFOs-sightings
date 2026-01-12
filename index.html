@@ -71,24 +71,23 @@
 
         /* Add markers */
         function addMarkers(map, jsondata) {
+            let i = 0;
             for (let f of jsondata.features) {
-                if (f.properties.country_code == "LTU") {
-                    let lat = f.geometry.coordinates[1];
-                    let lon = f.geometry.coordinates[0];
+                if (i == 0) break;
+                let lat = f.geometry.coordinates[1];
+                let lon = f.geometry.coordinates[0];
 
-                    let popup = `
+                let popup = `
                 <b>${f.properties.city}, ${f.properties.state}</b><br>
                 <b>Shape:</b> ${f.properties.shape}<br>
                 <b>Duration:</b> ${f.properties.duration}<br><br>
                 ${f.properties.description}
-            `;
+            `; /* Formattage du texte des popups */
 
-                    L.marker([lat, lon]).addTo(map).bindPopup(popup);
-                }
+                L.marker([lat, lon]).addTo(map).bindPopup(popup);
+                i++;
             }
         }
-
-
 
         function buildLayer(map, data) {
             let geoLayer;
@@ -97,6 +96,13 @@
             geoLayer = L.geoJSON(data);
 
             geoLayer.addTo(map);
+        }
+
+        function highlightFeature(e) {
+            e.target.setStyle({
+                weight: 3,
+                color: '#FFFF00' // yellow on hover
+            });
         }
 
         window.onload = async() => {
@@ -121,11 +127,35 @@
             });
 
             Stadia_StamenTonerDark.addTo(map);
+
             let response = await fetch("data/ufo-sightings.csv");
             let csvTextData = await response.text();
             let jsondata = await fromCSVtoJSON(csvTextData);
 
             addMarkers(map, jsondata);
+
+            let responseCountries = await fetch("data/countries.json");
+            let countriesText = await responseCountries.text();
+            let countriesGeoJSON = JSON.parse(countriesText);
+
+            let countriesLayer = L.geoJSON(countriesGeoJSON, {
+                style: {
+                    color: "#00FF00",
+                    weight: 2,
+                    fillOpacity: 0
+                },
+                onEachFeature: function(feature, layer) {
+                    layer.on({
+                        mouseover: highlightFeature,
+                        mouseout: function(e) {
+                            countriesLayer.resetStyle(e.target);
+                        }
+                    });
+                    if (feature.properties && feature.properties.name) {
+                        layer.bindPopup(feature.properties.name);
+                    }
+                }
+            }).addTo(map);
         };
     </script>
 </head>
