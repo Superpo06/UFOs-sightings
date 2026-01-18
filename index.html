@@ -1,31 +1,127 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 
 <head>
     <meta charset="utf-8">
-    <title>
-        <Le Musée des OVNIs>
-    </title>
+    <title>Le Musée des OVNIs</title>
+
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+        
         #map {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            width: 100%;
+        }
+        /* Side panel */
+        
+        #sidepanel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 300px;
             height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 15px;
+            z-index: 1000;
+            transition: transform 0.3s;
+            overflow-y: auto;
+        }
+        
+        #sidepanel.collapsed {
+            transform: translateX(-260px);
+        }
+        
+        #togglePanel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            background: black;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 1100;
+        }
+        
+        h2 {
+            margin-top: 40px;
+            font-size: 18px;
+        }
+        
+        label {
+            display: block;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        
+        select,
+        input {
+            width: 100%;
+        }
+        
+        #yearValue {
+            font-size: 13px;
+        }
+        
+        canvas {
+            margin-top: 20px;
         }
     </style>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+</head>
+
+<body>
+
+    <!-- Side Panel -->
+    <div id="sidepanel" class="collapsed">
+        <button id="togglePanel">☰</button>
+
+        <h2>Observations OVNI</h2>
+
+        <label for="countryFilter">Pays</label>
+        <select id="countryFilter">
+            <option value="all">Tous les pays</option>
+        </select>
+
+        <label for="yearFilter">Jusqu'à l'année</label>
+        <input type="range" id="yearFilter" min="1900" max="2025" value="2025">
+        <span id="yearValue">2025</span>
+
+        <canvas id="timeChart" height="200"></canvas>
+    </div>
+
+    <!-- Map -->
+    <div id="map"></div>
+
     <script>
         "use strict";
 
+        let allFeatures = [];
+        let markersLayer = L.layerGroup();
+        let chart;
+        let countryNameToCode = {};
+        let codeToName = {};
+
         /* CSV ➜ GeoJSON */
         function fromCSVtoJSON(csvText) {
-            let lines = csvText.trim().split("\n");
+            let lines = csvText.trim().split("\n").slice(1);
             let features = [];
 
             for (let line of lines) {
@@ -48,7 +144,7 @@
                         id: cols[0],
                         datetime: cols[1],
                         report_date: cols[2],
-                        year: cols[3],
+                        year: parseInt(cols[3]),
                         month: cols[4],
                         hour: cols[5],
                         season: cols[6],
@@ -69,35 +165,6 @@
             };
         }
 
-        /* Add markers */
-        function addMarkers(map, jsondata) {
-            let i = 0;
-            for (let f of jsondata.features) {
-                if (i == 1000) break;
-                let lat = f.geometry.coordinates[1];
-                let lon = f.geometry.coordinates[0];
-
-                let popup = `
-                <b>${f.properties.city}, ${f.properties.state}</b><br>
-                <b>Shape:</b> ${f.properties.shape}<br>
-                <b>Duration:</b> ${f.properties.duration}<br><br>
-                ${f.properties.description}
-            `; /* Formattage du texte des popups */
-
-                L.marker([lat, lon]).addTo(map).bindPopup(popup);
-                i++;
-            }
-        }
-
-        function buildLayer(map, data) {
-            let geoLayer;
-            if (geoLayer) geoLayer.remove();
-
-            geoLayer = L.geoJSON(data);
-
-            geoLayer.addTo(map);
-        }
-
         function highlightFeature(e) {
             e.target.setStyle({
                 weight: 3,
@@ -105,39 +172,93 @@
             });
         }
 
-        window.onload = async() => {
-            let mapBounds = L.latLngBounds(
-                L.latLng(-90, -180),
-                L.latLng(90, 180)
-            );
-            let map = L.map('map', {
-                center: [20, 0],
-                zoom: 3,
-                minZoom: 2,
-                maxBounds: mapBounds,
-                maxBoundsViscosity: 1.0,
-                bounceAtZoomLimits: false
+        /* Add markers */
+        function addMarkers(map, features) {
+            markersLayer.clearLayers();
+
+            for (let f of features) {
+                let lat = f.geometry.coordinates[1];
+                let lon = f.geometry.coordinates[0];
+
+                let popup = `
+                    <b>${f.properties.city}, ${f.properties.state}</b><br>
+                    <b>Forme :</b> ${f.properties.shape}<br>
+                    <b>Année :</b> ${f.properties.year}<br>
+                    <b>Durée :</b> ${f.properties.duration}<br><br>
+                    ${f.properties.description}
+                `;
+
+                L.circleMarker([lat, lon], {
+                    radius: 4,
+                    color: "#00ffcc",
+                    weight: 1,
+                    fillOpacity: 0.8
+                }).bindPopup(popup).addTo(markersLayer);
+            }
+
+            markersLayer.addTo(map);
+        }
+
+        function applyFilters() {
+            let selectedCountry = countryFilter.value;
+            let year = parseInt(yearFilter.value);
+
+            let filtered = allFeatures.filter(f => {
+                return (selectedCountry === "all" || f.properties.country === selectedCountry) &&
+                    f.properties.year <= year;
             });
 
-            var Stadia_StamenTonerDark = L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_toner_dark/{z}/{x}/{y}{r}.{ext}', {
-                minZoom: 0,
-                maxZoom: 20,
-                attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://www.stamen.com/" target="_blank">Stamen Design</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                ext: 'png'
+            addMarkers(map, filtered);
+            updateChart(filtered);
+        }
+
+        /* Chart */
+        function updateChart(features) {
+            let counts = {};
+
+            features.forEach(f => {
+                let y = f.properties.year;
+                counts[y] = (counts[y] || 0) + 1;
             });
 
-            Stadia_StamenTonerDark.addTo(map);
+            let years = Object.keys(counts).sort();
+            let values = years.map(y => counts[y]);
 
-            let response = await fetch("data/ufo-sightings.csv");
-            let csvTextData = await response.text();
-            let jsondata = await fromCSVtoJSON(csvTextData);
+            if (chart) chart.destroy();
 
-            addMarkers(map, jsondata);
+            chart = new Chart(document.getElementById("timeChart"), {
+                type: "line",
+                data: {
+                    labels: years,
+                    datasets: [{
+                        data: values,
+                        borderColor: "#00ffcc",
+                        tension: 0.2
+                    }]
+                },
+                options: {
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: "white"
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: "white"
+                            }
+                        }
+                    }
+                }
+            });
+        }
 
-            let responseCountries = await fetch("data/countries.json");
-            let countriesText = await responseCountries.text();
-            let countriesGeoJSON = JSON.parse(countriesText);
-
+        function addCountriesBorders(map, countriesGeoJSON) {
             let countriesLayer = L.geoJSON(countriesGeoJSON, {
                 style: {
                     color: "#00FF00",
@@ -147,21 +268,98 @@
                 onEachFeature: function(feature, layer) {
                     layer.on({
                         mouseover: highlightFeature,
-                        mouseout: function(e) {
-                            countriesLayer.resetStyle(e.target);
+                        mouseout: e => countriesLayer.resetStyle(e.target),
+                        click: function() {
+                            if (feature.properties && feature.properties.cca2) {
+                                let code = feature.properties.cca2;
+                                countryFilter.value = code; // select in dropdown
+                                applyFilters(); // apply filter
+                            }
                         }
                     });
+
                     if (feature.properties && feature.properties.name) {
                         layer.bindPopup(feature.properties.name);
                     }
                 }
             }).addTo(map);
+        }
+
+        async function loadCountryMapping() {
+            let response = await fetch("data/country_name_mapping.csv");
+            let text = await response.text();
+            let lines = text.trim().split("\n").slice(1);
+
+            for (let line of lines) {
+                let [name, code] = line.split(",");
+                countryNameToCode[name] = code;
+                codeToName[code] = name;
+            }
+        }
+
+        /* Init */
+        let map;
+
+        window.onload = async() => {
+            map = L.map('map', {
+                center: [20, 0],
+                zoom: 3,
+                minZoom: 2
+            });
+
+            L.tileLayer(
+                'https://tiles.stadiamaps.com/tiles/stamen_toner_dark/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 20
+                }
+            ).addTo(map);
+
+            await loadCountryMapping();
+
+            let response = await fetch("data/ufo-sightings.csv");
+            let csvTextData = await response.text();
+            let jsondata = fromCSVtoJSON(csvTextData);
+
+            allFeatures = jsondata.features;
+
+            allFeatures.forEach(f => {
+                // CSV already has country name
+                let name = f.properties.country;
+                f.properties.country_code = countryNameToCode[name] || null;
+            });
+
+            let countries = [...new Set(allFeatures.map(f => f.properties.country))].sort();
+            countries.forEach(s => {
+                let opt = document.createElement("option");
+                opt.value = s;
+                opt.textContent = s;
+                countryFilter.appendChild(opt);
+            });
+
+            addMarkers(map, allFeatures);
+            updateChart(allFeatures);
+
+            let responseCountries = await fetch("data/countries.json");
+            let countriesText = await responseCountries.text();
+            let countriesGeoJSON = JSON.parse(countriesText);
+
+
+            addCountriesBorders(map, countriesGeoJSON);
+
+            countryFilter.onchange = applyFilters;
+            yearFilter.oninput = () => {
+                yearValue.textContent = yearFilter.value;
+                applyFilters();
+            };
+
+            togglePanel.onclick = () => {
+                sidepanel.classList.toggle("collapsed");
+                togglePanel.textContent =
+                    sidepanel.classList.contains("collapsed") ? "☰" : "✕";
+            };
+
         };
     </script>
-</head>
 
-<body>
-    <div id="map"></div>
 </body>
 
 </html>
