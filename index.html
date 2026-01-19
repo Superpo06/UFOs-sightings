@@ -326,15 +326,8 @@
 
             await loadCountryMapping();
 
-
             /* Créee les feature et ajoute le mapping */
             allFeatures = await load_data().features;
-
-            allFeatures.forEach(f => {
-                // CSV already has country name
-
-            });
-
 
             /* Country filter */
             let countries = [...new Set(allFeatures.map(f => f.properties.country))].sort();
