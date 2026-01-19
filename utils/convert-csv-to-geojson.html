@@ -394,7 +394,7 @@
                             shape: cols[13] || '',
                             duration: cols[14] || '',
                             description: cols.slice(15).join(";") || '',
-                            country_code: countryNameToCode[normalizedCountry] || 'yn'
+                            country_code: countryNameToCode[cols[8] || ''] || 'yn'
                         }
                     });
                 } catch (error) {
