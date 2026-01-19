@@ -110,27 +110,21 @@
     <script>
         "use strict";
 
-        let allFeatures = [];
-        let markersLayer = L.layerGroup();
-        let chart;
-        let countryNameToCode = {};
-        let codeToName = {};
-
-        /* CSV ➜ GeoJSON */
         function fromCSVtoJSON(csvText) {
-            let lines = csvText.trim().split("\n").slice(1);
-            let features = [];
+            let lines = csvText.trim().split("\n").slice(1); /*Divise le csv en lignes*/
+            let features = []; /*Tableau pour stocker les features*/
 
             for (let line of lines) {
-                let cols = line.split(";");
+                let cols = line.split(";"); /*Divise chaque ligne en colonnes*/
 
-                if (cols.length < 16) continue;
+                if (cols.length < 16) continue; /*Vérifie qu'il y a assez de colonnes*/
 
                 let lat = parseFloat(cols[11]);
-                let lon = parseFloat(cols[12]);
+                let lon = parseFloat(cols[12]); /*Récupère la latitude et la longitude*/
 
                 if (isNaN(lat) || isNaN(lon)) continue;
 
+                /*Crée une feature GeoJSON pour chaque observation*/
                 features.push({
                     type: "Feature",
                     geometry: {
@@ -155,20 +149,22 @@
                     }
                 });
             }
+            /*Retourne un objet FeatureCollection GeoJSON*/
             return {
                 type: "FeatureCollection",
                 features
             };
         }
 
+        /* Met en surbrillance la frontière du pays au survol */
         function highlightFeature(e) {
             e.target.setStyle({
                 weight: 3,
-                color: '#FFFF00' // yellow on hover
+                color: '#FFFF00'
             });
         }
 
-        /* Add markers */
+        /* Ajoute des marqueurs pour les observations filtrées */
         function addMarkers(map, features) {
             markersLayer.clearLayers();
 
@@ -200,7 +196,7 @@
             let year = parseInt(yearFilter.value);
 
             let filtered = allFeatures.filter(f => {
-                return (selectedCountry === "all" || f.properties.country === selectedCountry) &&
+                return (selectedCountry === "all" || f.properties.country_code === selectedCountry) &&
                     f.properties.year <= year;
             });
 
@@ -299,20 +295,21 @@
             }).addTo(map);
         }
 
-        async function loadCountryMapping() {
-            let response = await fetch("data/country_name_mapping.csv");
-            let text = await response.text();
-            let lines = text.trim().split("\n").slice(1);
 
-            for (let line of lines) {
-                let [name, code] = line.split(",");
-                countryNameToCode[name] = code;
-                codeToName[code] = name;
-            }
+
+        function load_data() {
+            let response = fetch("data/ufo-sightings.csv");
+            let csvTextData = response.text();
+            let jsondata = fromCSVtoJSON(csvTextData);
+            return jsondata;
         }
 
         /* Init */
         let map;
+        let allFeatures = [];
+        let markersLayer = L.layerGroup();
+        let chart;
+
 
         window.onload = async() => {
             map = L.map('map', {
@@ -329,18 +326,17 @@
 
             await loadCountryMapping();
 
-            let response = await fetch("data/ufo-sightings.csv");
-            let csvTextData = await response.text();
-            let jsondata = fromCSVtoJSON(csvTextData);
 
-            allFeatures = jsondata.features;
+            /* Créee les feature et ajoute le mapping */
+            allFeatures = await load_data().features;
 
             allFeatures.forEach(f => {
                 // CSV already has country name
-                let name = f.properties.country;
-                f.properties.country_code = countryNameToCode[name] || null;
+
             });
 
+
+            /* Country filter */
             let countries = [...new Set(allFeatures.map(f => f.properties.country))].sort();
             countries.forEach(s => {
                 let opt = document.createElement("option");
