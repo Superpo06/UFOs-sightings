@@ -372,7 +372,7 @@
                     if (isNaN(year)) {
                         year = 0;
                     }
-
+                    console.log(countryNameToCode[cols[8] || ''] || '', cols[8] || '');
                     // Créer la feature
                     features.push({
                         type: "Feature",
@@ -394,7 +394,7 @@
                             shape: cols[13] || '',
                             duration: cols[14] || '',
                             description: cols.slice(15).join(";") || '',
-                            country_code: countryNameToCode[cols[8] || ''] || 'yn'
+                            country_code: countryNameToCode[cols[8] || ''] || ''
                         }
                     });
                 } catch (error) {
