@@ -270,7 +270,7 @@
                 let [name, code] = line.split(",");
                 if (!name || !code) continue;
 
-                countryNameToCode[name] = code.trim();
+                countryNameToCode[name.trim()] = code.trim();
                 codeToName[code.trim()] = name.trim();
             }
         }
@@ -388,6 +388,7 @@
                             month: cols[4] || '',
                             hour: cols[5] || '',
                             season: cols[6] || '',
+                            cca3: cols[7] || '',
                             country: cols[8] || '',
                             state: cols[9] || '',
                             city: cols[10] || '',
