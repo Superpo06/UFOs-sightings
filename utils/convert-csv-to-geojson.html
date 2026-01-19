@@ -235,6 +235,7 @@
         let totalLines = 0;
         let countryNameToCode = {};
         let codeToName = {};
+        let CountryMappingLoaded = false;
 
         // Éléments DOM
         const elements = {
@@ -255,6 +256,9 @@
         };
 
         async function loadCountryMapping() {
+            if (CountryMappingLoaded) return;
+            CountryMappingLoaded = true;
+
             let response = await fetch("data/country_name_mapping.csv");
             let text = await response.text();
             let lines = text.trim().split("\n").slice(1);
@@ -318,7 +322,7 @@
 
         // Traiter un morceau de lignes
         function processChunk(lines, startIndex, chunkSize, options) {
-            loadCountryMapping();
+
             const features = [];
             const errors = [];
             let processed = 0;
@@ -385,7 +389,7 @@
                             shape: cols[13] || '',
                             duration: cols[14] || '',
                             description: cols.slice(15).join(";") || '',
-                            country_code: countryNameToCode[cols[8]] || ''
+                            country_code: countryNameToCode[(cols[8] || '').trim()] || ''
                         }
                     });
 
@@ -514,6 +518,7 @@
                 };
 
                 // Conversion par morceaux
+                await loadCountryMapping();
                 const result = await convertInChunks(dataLines, options);
 
                 if (!isConverting) {
