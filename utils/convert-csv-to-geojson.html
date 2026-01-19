@@ -270,8 +270,7 @@
                 let [name, code] = line.split(",");
                 if (!name || !code) continue;
 
-                const normalizedName = normalizeCountryName(name);
-                countryNameToCode[normalizedName] = code.trim();
+                countryNameToCode[name] = code.trim();
                 codeToName[code.trim()] = name.trim();
             }
         }
@@ -326,15 +325,6 @@
             return result;
         }
 
-        function normalizeCountryName(name) {
-            return name
-                .toLowerCase()
-                .normalize("NFD") // split accents
-                .replace(/[\u0300-\u036f]/g, "") // remove accents
-                .replace(/[^a-z\s]/g, "") // remove punctuation
-                .replace(/\s+/g, " ") // normalize spaces
-                .trim();
-        }
         // Traiter un morceau de lignes
         function processChunk(lines, startIndex, chunkSize, options) {
 
@@ -382,8 +372,6 @@
                     if (isNaN(year)) {
                         year = 0;
                     }
-                    const rawCountry = cols[8] || '';
-                    const normalizedCountry = normalizeCountryName(rawCountry);
 
                     // Créer la feature
                     features.push({
@@ -406,16 +394,14 @@
                             shape: cols[13] || '',
                             duration: cols[14] || '',
                             description: cols.slice(15).join(";") || '',
-                            country_code: countryNameToCode[normalizedCountry] || ''
+                            country_code: countryNameToCode[normalizedCountry] || 'yn'
                         }
                     });
-
                 } catch (error) {
                     errors.push(`Ligne ${i + 1}: ${error.message}`);
                     continue;
                 }
             }
-
             return {
                 features,
                 errors,
