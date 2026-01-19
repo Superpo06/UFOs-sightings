@@ -259,14 +259,20 @@
             if (CountryMappingLoaded) return;
             CountryMappingLoaded = true;
 
-            let response = await fetch("data/country_name_mapping.csv");
-            let text = await response.text();
-            let lines = text.trim().split("\n").slice(1);
+            const response = await fetch("data/country_name_mapping.csv");
+            const text = await response.text();
+
+            const lines = text.trim().split("\n");
 
             for (let line of lines) {
+                if (!line.trim()) continue;
+
                 let [name, code] = line.split(",");
-                countryNameToCode[name] = code;
-                codeToName[code] = name;
+                if (!name || !code) continue;
+
+                const normalizedName = normalizeCountryName(name);
+                countryNameToCode[normalizedName] = code.trim();
+                codeToName[code.trim()] = name.trim();
             }
         }
 
@@ -320,6 +326,15 @@
             return result;
         }
 
+        function normalizeCountryName(name) {
+            return name
+                .toLowerCase()
+                .normalize("NFD") // split accents
+                .replace(/[\u0300-\u036f]/g, "") // remove accents
+                .replace(/[^a-z\s]/g, "") // remove punctuation
+                .replace(/\s+/g, " ") // normalize spaces
+                .trim();
+        }
         // Traiter un morceau de lignes
         function processChunk(lines, startIndex, chunkSize, options) {
 
@@ -367,6 +382,8 @@
                     if (isNaN(year)) {
                         year = 0;
                     }
+                    const rawCountry = cols[8] || '';
+                    const normalizedCountry = normalizeCountryName(rawCountry);
 
                     // Créer la feature
                     features.push({
@@ -389,7 +406,7 @@
                             shape: cols[13] || '',
                             duration: cols[14] || '',
                             description: cols.slice(15).join(";") || '',
-                            country_code: countryNameToCode[(cols[8] || '').trim()] || ''
+                            country_code: countryNameToCode[normalizedCountry] || ''
                         }
                     });
 
