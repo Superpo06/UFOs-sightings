@@ -270,7 +270,14 @@
         let allFeatures = [];
         let markersLayer = L.layerGroup();
         let chart;
+        let countriesSet = new Set();
 
+        function createDistinctCountries(features) {
+            features.forEach(f => {
+                countriesSet.add(f.properties.country);
+            });
+            return Array.from(countriesSet).sort();
+        }
 
         window.onload = async() => {
             map = L.map('map', {
@@ -318,6 +325,9 @@
                 togglePanel.textContent =
                     sidepanel.classList.contains("collapsed") ? "☰" : "✕";
             };
+
+            createDistinctCountries(allFeatures);
+            console.log("Distinct countries:", countriesSet);
 
         };
     </script>
