@@ -224,121 +224,164 @@
     <script>
         "use strict";
 
-        /* Chart */
         function updateChart(features) {
             const canvas = document.getElementById("timeChart");
             const ctx = canvas.getContext("2d");
 
-            // Nettoyage
+            /* =========================
+               Configuration
+            ========================= */
+            const PADDING = 35;
+            const GRID_LINES = 5;
+            const POINT_RADIUS = 4;
+
+            const WIDTH = canvas.width - PADDING * 2;
+            const HEIGHT = canvas.height - PADDING * 2;
+
+            /* =========================
+               Clear canvas
+            ========================= */
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Comptage par année
-            let counts = {};
+            /* =========================
+               Prepare data (counts / year)
+            ========================= */
+            const countsByYear = {};
             features.forEach(f => {
-                let y = f.properties.year;
-                counts[y] = (counts[y] || 0) + 1;
+                const year = f.properties.year;
+                countsByYear[year] = (countsByYear[year] || 0) + 1;
             });
 
-            let years = Object.keys(counts).map(Number).sort((a, b) => a - b);
+            const years = Object.keys(countsByYear)
+                .map(Number)
+                .sort((a, b) => a - b);
+
             if (years.length === 0) return;
 
-            let values = years.map(y => counts[y]);
-
-            const padding = 30;
-            const w = canvas.width - padding * 2;
-            const h = canvas.height - padding * 2;
-
+            const values = years.map(y => countsByYear[y]);
             const maxValue = Math.max(...values);
 
-            // Grille de fond
-            ctx.strokeStyle = "rgba(160, 174, 192, 0.2)";
-            ctx.lineWidth = 0.5;
+            /* =========================
+               Scales
+            ========================= */
+            const xScale = i =>
+                PADDING + (i / (years.length - 1)) * WIDTH;
 
-            // Lignes horizontales
-            for (let i = 0; i <= 5; i++) {
-                const y = padding + (h / 5) * i;
+            const yScale = value =>
+                PADDING + HEIGHT - (value / maxValue) * HEIGHT;
+
+            /* =========================
+               Grid + Y axis labels
+            ========================= */
+            ctx.strokeStyle = "rgba(160,174,192,0.2)";
+            ctx.fillStyle = "#a0aec0";
+            ctx.font = "10px sans-serif";
+            ctx.textAlign = "right";
+            ctx.textBaseline = "middle";
+
+            for (let i = 0; i <= GRID_LINES; i++) {
+                const value = Math.round((maxValue / GRID_LINES) * i);
+                const y = yScale(value);
+
+                // Grid line
                 ctx.beginPath();
-                ctx.moveTo(padding, y);
-                ctx.lineTo(padding + w, y);
+                ctx.moveTo(PADDING, y);
+                ctx.lineTo(PADDING + WIDTH, y);
                 ctx.stroke();
+
+                // Y-axis label
+                ctx.fillText(value, PADDING - 6, y);
             }
 
-            // Axes
+            /* =========================
+               Axes
+            ========================= */
             ctx.strokeStyle = "#a0aec0";
             ctx.lineWidth = 1.5;
 
             ctx.beginPath();
-            ctx.moveTo(padding, padding);
-            ctx.lineTo(padding, padding + h);
-            ctx.lineTo(padding + w, padding + h);
+            ctx.moveTo(PADDING, PADDING);
+            ctx.lineTo(PADDING, PADDING + HEIGHT);
+            ctx.lineTo(PADDING + WIDTH, PADDING + HEIGHT);
             ctx.stroke();
 
-            // Courbe avec gradient
-            const gradient = ctx.createLinearGradient(padding, 0, padding + w, 0);
-            gradient.addColorStop(0, '#4299e1');
-            gradient.addColorStop(1, '#68d391');
+            /* =========================
+               Line gradient
+            ========================= */
+            const gradient = ctx.createLinearGradient(
+                PADDING, 0, PADDING + WIDTH, 0
+            );
+            gradient.addColorStop(0, "#4299e1");
+            gradient.addColorStop(1, "#68d391");
 
+            /* =========================
+               Draw line
+            ========================= */
             ctx.strokeStyle = gradient;
             ctx.lineWidth = 3;
-            ctx.lineJoin = 'round';
-            ctx.lineCap = 'round';
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+
             ctx.beginPath();
-
             years.forEach((year, i) => {
-                const x = padding + (i / (years.length - 1)) * w;
-                const y = padding + h - (values[i] / maxValue) * h;
-
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
+                const x = xScale(i);
+                const y = yScale(values[i]);
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             });
-
             ctx.stroke();
 
-            // Remplissage sous la courbe
-            ctx.fillStyle = 'rgba(99, 179, 237, 0.1)';
+            /* =========================
+               Fill under line
+            ========================= */
+            ctx.fillStyle = "rgba(99,179,237,0.12)";
             ctx.beginPath();
             years.forEach((year, i) => {
-                const x = padding + (i / (years.length - 1)) * w;
-                const y = padding + h - (values[i] / maxValue) * h;
-
-                if (i === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
+                const x = xScale(i);
+                const y = yScale(values[i]);
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             });
-            ctx.lineTo(padding + w, padding + h);
-            ctx.lineTo(padding, padding + h);
+            ctx.lineTo(PADDING + WIDTH, PADDING + HEIGHT);
+            ctx.lineTo(PADDING, PADDING + HEIGHT);
             ctx.closePath();
             ctx.fill();
 
-            // Points
+            /* =========================
+               Points
+            ========================= */
             ctx.fillStyle = "#ffffff";
             ctx.strokeStyle = "#4299e1";
             ctx.lineWidth = 2;
 
             years.forEach((year, i) => {
-                const x = padding + (i / (years.length - 1)) * w;
-                const y = padding + h - (values[i] / maxValue) * h;
+                const x = xScale(i);
+                const y = yScale(values[i]);
 
                 ctx.beginPath();
-                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.arc(x, y, POINT_RADIUS, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
             });
 
-            // Labels des années (tous les 5 ans)
+            /* =========================
+               X axis labels (years)
+            ========================= */
             ctx.fillStyle = "#a0aec0";
-            ctx.font = "10px sans-serif";
             ctx.textAlign = "center";
+            ctx.textBaseline = "top";
+
+            const step = Math.max(1, Math.floor(years.length / 5));
 
             years.forEach((year, i) => {
-                if (years.length <= 10 || i % Math.floor(years.length / 5) === 0) {
-                    const x = padding + (i / (years.length - 1)) * w;
-                    ctx.fillText(year, x, padding + h + 15);
+                if (i % step === 0 || years.length <= 10) {
+                    ctx.fillText(
+                        year,
+                        xScale(i),
+                        PADDING + HEIGHT + 8
+                    );
                 }
             });
         }
+
 
         /* Met en surbrillance la frontière du pays au survol */
         function highlightFeature(e) {
@@ -461,10 +504,8 @@
         }
 
         function updateThemeColors(sidepanel, lightmode) {
-
-
-            if (lightmode === "light") {
-                // Mode clair
+            if (lightmode === "dark") {
+                // Mode sombre
                 sidepanel.style.background = 'rgba(247, 250, 252, 0.95)';
                 sidepanel.style.color = '#2d3748';
 
@@ -480,7 +521,7 @@
 
                 document.querySelector('h2').style.color = '#2d3748';
             } else {
-                // Mode sombre
+                // Mode clair
                 sidepanel.style.background = 'rgba(40, 44, 52, 0.95)';
                 sidepanel.style.color = '#e6e6e6';
 
@@ -498,8 +539,6 @@
             }
         }
 
-
-
         function loadBaseMap(lightmode, tileLayer) {
             if (tileLayer) {
                 map.removeLayer(tileLayer);
@@ -514,11 +553,13 @@
             tileLayer.addTo(map);
         }
 
-        function setLightButton(sidepanel, tileLayer) {
+        function setLightButton(tileLayer, sidepanel, lightmode) {
             toggleTheme.onclick = () => {
                 lightmode = (lightmode === "dark") ? "light" : "dark";
+
                 toggleTheme.textContent =
                     lightmode === "dark" ? "🌙 Mode sombre" : "☀️ Mode clair";
+
                 loadBaseMap(lightmode, tileLayer);
                 updateThemeColors(sidepanel, lightmode);
             };
@@ -555,7 +596,6 @@
                 }))
                 .sort((a, b) => a.name.localeCompare(b.name));
 
-            // Populate country filter
             sortedCountries.forEach(country => {
                 let opt = document.createElement("option");
                 opt.value = country.code;
@@ -564,9 +604,16 @@
             });
         }
 
+        function initSidePanelButton(sidepanel) {
+            togglePanel.onclick = () => {
+                sidepanel.classList.toggle("collapsed");
+                togglePanel.textContent =
+                    sidepanel.classList.contains("collapsed") ? "☰" : "✕";
+            };
+        }
+
         let map;
         let shapesMap = new Map();
-        let lightmode = "dark";
 
         window.onload = async() => {
             map = L.map('map', {
@@ -580,38 +627,30 @@
             let tileLayer;
             loadBaseMap(lightmode, tileLayer);
 
-            /* Charger les données */
             let allFeatures = await load_data();
-
             let markersLayer = L.layerGroup();
             addMarkers(map, allFeatures, markersLayer);
             updateChart(allFeatures);
 
-            initCoutriesFilter(allFeatures);
-            initShapeFilter(allFeatures);
-            countryFilter.onchange = () => applyFilters(markersLayer, allFeatures);
-            shapeFilter.onchange = () => applyFilters(markersLayer, allFeatures);
-
             let responseCountries = await fetch("data/countries.json");
             let countriesText = await responseCountries.text();
             let countriesGeoJSON = JSON.parse(countriesText);
-
-            addCountriesBorders(map, countriesGeoJSON, markersLayer);
+            addCountriesBorders(map, countriesGeoJSON, markersLayer, allFeatures);
 
             yearFilter.oninput = () => {
                 yearValue.textContent = yearFilter.value;
                 applyFilters(markersLayer, allFeatures);
             };
 
+            initCoutriesFilter(allFeatures);
+            initShapeFilter(allFeatures);
+            countryFilter.onchange = () => applyFilters(markersLayer, allFeatures);
+            shapeFilter.onchange = () => applyFilters(markersLayer, allFeatures);
+
             const sidepanel = document.getElementById("sidepanel");
-            togglePanel.onclick = () => {
-                sidepanel.classList.toggle("collapsed");
-                togglePanel.textContent =
-                    sidepanel.classList.contains("collapsed") ? "☰" : "✕";
-            };
+            initSidePanelButton(sidepanel);
 
-            setLightButton(sidepanel, tileLayer);
-
+            setLightButton(tileLayer, sidepanel, lightmode);
             applyFilters(markersLayer, allFeatures);
         };
     </script>
