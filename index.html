@@ -25,72 +25,74 @@
             right: 0;
             bottom: 0;
         }
+        /* Panneau normal */
         
-     /* Panneau normal */
-#sidepanel {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 300px;
-    height: 100%;
-    background: rgba(40, 44, 52, 0.95);
-    color: #e6e6e6;
-    padding: 20px;
-    z-index: 1000;
-    transition: transform 0.3s ease;
-    overflow-y: auto;
-    backdrop-filter: blur(5px);
-}
-
-/* Panneau complètement caché sauf le bouton */
-#sidepanel.collapsed {
-    transform: translateX(-100%); /* Cache 100% */
-    background: transparent;
-}
-
-/* Bouton flottant indépendant */
-#togglePanel {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    width: 40px;
-    height: 40px;
-    background: #4299e1;
-    color: white;
-    border: none;
-    cursor: pointer;
-    font-size: 18px;
-    z-index: 1100;
-    border-radius: 4px;
-    transition: background 0.2s, transform 0.3s ease;
-}
-
-#togglePanel:hover {
-    background: #3182ce;
-}
-
-/* Déplace le bouton quand le panneau est ouvert */
-#sidepanel:not(.collapsed) + #togglePanel {
-    left: 310px; /* 300px (largeur panneau) + 10px (marge) */
-}
-
-/* Contenu avec transitions */
-#panelContent {
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-    pointer-events: auto;
-}
-
-#sidepanel.collapsed #panelContent {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-}
-
-#sidepanel:not(.collapsed) #panelContent {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-}
+        #sidepanel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 300px;
+            height: 100%;
+            background: rgba(40, 44, 52, 0.95);
+            color: #e6e6e6;
+            padding: 20px;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            backdrop-filter: blur(5px);
+        }
+        /* Panneau complètement caché sauf le bouton */
+        
+        #sidepanel.collapsed {
+            transform: translateX(-100%);
+            /* Cache 100% */
+            background: transparent;
+        }
+        /* Bouton flottant indépendant */
+        
+        #togglePanel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            width: 40px;
+            height: 40px;
+            background: #4299e1;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 1100;
+            border-radius: 4px;
+            transition: background 0.2s, transform 0.3s ease;
+        }
+        
+        #togglePanel:hover {
+            background: #3182ce;
+        }
+        /* Déplace le bouton quand le panneau est ouvert */
+        
+        #sidepanel:not(.collapsed)+#togglePanel {
+            left: 310px;
+            /* 300px (largeur panneau) + 10px (marge) */
+        }
+        /* Contenu avec transitions */
+        
+        #panelContent {
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            pointer-events: auto;
+        }
+        
+        #sidepanel.collapsed #panelContent {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        
+        #sidepanel:not(.collapsed) #panelContent {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
         
         h2 {
             margin-top: 40px;
@@ -189,110 +191,38 @@
 
 <body>
     <!-- Side Panel -->
-<button id="togglePanel">☰</button>
-<div id="sidepanel" class="collapsed">
-    <div id="panelContent">
-        <h2>Observations OVNI</h2>
+    <button id="togglePanel">☰</button>
+    <div id="sidepanel" class="collapsed">
+        <div id="panelContent">
+            <h2>Observations OVNI</h2>
 
-        <label for="countryFilter">Pays</label>
-        <select id="countryFilter">
+            <label for="countryFilter">Pays</label>
+            <select id="countryFilter">
             <option value="" disabled selected>— Sélectionner un pays —</option>
             <option value="all">Tous les pays</option>
         </select>
 
-        <label for="shapeFilter">Forme de l'observation</label>
-        <select id="shapeFilter">
+            <label for="shapeFilter">Forme de l'observation</label>
+            <select id="shapeFilter">
             <option value="all">Toutes les formes</option>
         </select>
 
-        <label for="yearFilter">Jusqu'à l'année</label>
-        <input type="range" id="yearFilter" min="1900" max="2025" value="1980">
-        <span id="yearValue">1980</span>
+            <label for="yearFilter">Jusqu'à l'année</label>
+            <input type="range" id="yearFilter" min="1900" max="2025" value="1980">
+            <span id="yearValue">1980</span>
 
-        <canvas id="timeChart" height="200"></canvas>
-        <button id="toggleTheme" style="width:100%; margin-top:10px;">
+            <canvas id="timeChart" height="200"></canvas>
+            <button id="toggleTheme" style="width:100%; margin-top:10px;">
             🌙 Mode sombre
         </button>
+        </div>
     </div>
-</div>
 
     <!-- Map -->
     <div id="map"></div>
 
     <script>
         "use strict";
-        
-        /* Met en surbrillance la frontière du pays au survol */
-        function highlightFeature(e) {
-            e.target.setStyle({
-                weight: 3,
-                color: '#ecc94b',
-                opacity: 0.8
-            });
-        }
-
-        /* Ajoute des marqueurs pour les observations filtrées */
-        function addMarkers(map, features) {
-            markersLayer.clearLayers();
-
-            for (let f of features) {
-                let lat = f.geometry.coordinates[1];
-                let lon = f.geometry.coordinates[0];
-
-                let popup = `
-                    <div style="font-family: sans-serif; max-width: 300px;">
-                        <h3 style="margin: 0 0 10px 0; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
-                            ${f.properties.city}, ${f.properties.state}
-                        </h3>
-                        <p style="margin: 5px 0;"><strong>Forme :</strong> ${f.properties.shape}</p>
-                        <p style="margin: 5px 0;"><strong>Année :</strong> ${f.properties.year}</p>
-                        <p style="margin: 5px 0;"><strong>Durée :</strong> ${f.properties.duration}</p>
-                        <p style="margin: 10px 0 0 0; color: #4a5568; font-size: 14px;">
-                            ${f.properties.description}
-                        </p>
-                    </div>
-                `;
-
-                L.circleMarker([lat, lon], {
-                    radius: 5,
-                    color: "#4299e1",
-                    weight: 1.5,
-                    fillColor: "#63b3ed",
-                    fillOpacity: 0.7
-                })
-                .on("click", () => {
-                    focusOnEvent(lat, lon, 8);
-                })
-                .bindPopup(popup)
-                .addTo(markersLayer);
-            }
-
-            markersLayer.addTo(map);
-        }
-
-        function getFilteredFeatures() {
-            let selectedCountry = countryFilter.value;
-            let selectedShape = shapeFilter.value;
-            let year = parseInt(yearFilter.value);
-
-            let filtered = allFeatures.filter(f => {
-                return (
-                    (selectedCountry === "all" || selectedCountry === "" ||
-                        f.properties.country_code === selectedCountry) &&
-                    (selectedShape === "all" ||
-                        f.properties.shape === selectedShape) &&
-                    f.properties.year <= year
-                );
-            });
-
-            return filtered;
-        }
-
-        function applyFilters() {
-            let filtered = getFilteredFeatures();
-            addMarkers(map, filtered);
-            updateChart(filtered);
-        }
 
         /* Chart */
         function updateChart(features) {
@@ -323,7 +253,7 @@
             // Grille de fond
             ctx.strokeStyle = "rgba(160, 174, 192, 0.2)";
             ctx.lineWidth = 0.5;
-            
+
             // Lignes horizontales
             for (let i = 0; i <= 5; i++) {
                 const y = padding + (h / 5) * i;
@@ -347,7 +277,7 @@
             const gradient = ctx.createLinearGradient(padding, 0, padding + w, 0);
             gradient.addColorStop(0, '#4299e1');
             gradient.addColorStop(1, '#68d391');
-            
+
             ctx.strokeStyle = gradient;
             ctx.lineWidth = 3;
             ctx.lineJoin = 'round';
@@ -370,7 +300,7 @@
             years.forEach((year, i) => {
                 const x = padding + (i / (years.length - 1)) * w;
                 const y = padding + h - (values[i] / maxValue) * h;
-                
+
                 if (i === 0) {
                     ctx.moveTo(x, y);
                 } else {
@@ -386,7 +316,7 @@
             ctx.fillStyle = "#ffffff";
             ctx.strokeStyle = "#4299e1";
             ctx.lineWidth = 2;
-            
+
             years.forEach((year, i) => {
                 const x = padding + (i / (years.length - 1)) * w;
                 const y = padding + h - (values[i] / maxValue) * h;
@@ -401,7 +331,7 @@
             ctx.fillStyle = "#a0aec0";
             ctx.font = "10px sans-serif";
             ctx.textAlign = "center";
-            
+
             years.forEach((year, i) => {
                 if (years.length <= 10 || i % Math.floor(years.length / 5) === 0) {
                     const x = padding + (i / (years.length - 1)) * w;
@@ -410,7 +340,85 @@
             });
         }
 
-        function addCountriesBorders(map, countriesGeoJSON) {
+        /* Met en surbrillance la frontière du pays au survol */
+        function highlightFeature(e) {
+            e.target.setStyle({
+                weight: 3,
+                color: '#ecc94b',
+                opacity: 0.8
+            });
+        }
+
+        function createPopupContent(feature) {
+            let props = feature.properties;
+            return `
+                <div style="font-family: sans-serif; max-width: 300px;">
+                    <h3 style="margin: 0 0 10px 0; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
+                        ${props.city}, ${props.state}
+                    </h3>
+                    <p style="margin: 5px 0;"><strong>Forme :</strong> ${props.shape}</p>
+                    <p style="margin: 5px 0;"><strong>Année :</strong> ${props.year}</p>
+                    <p style="margin: 5px 0;"><strong>Durée :</strong> ${props.duration}</p>
+                    <p style="margin: 10px 0 0 0; color: #4a5568; font-size: 14px;">
+                        ${props.description}
+                    </p>
+                </div>
+            `;
+        }
+
+        function addMarkers(map, features, markersLayer) {
+            markersLayer.clearLayers();
+
+            for (let f of features) {
+                let lat = f.geometry.coordinates[1];
+                let lon = f.geometry.coordinates[0];
+
+                let popup = createPopupContent(f);
+
+                L.circleMarker([lat, lon], {
+                        radius: 5,
+                        color: "#4299e1",
+                        weight: 1.5,
+                        fillColor: "#63b3ed",
+                        fillOpacity: 0.7
+                    })
+                    .on("click", () => {
+                        focusOnEvent(lat, lon, 8);
+                    })
+                    .bindPopup(popup)
+                    .addTo(markersLayer);
+            }
+
+            markersLayer.addTo(map);
+        }
+
+        function getFilteredFeatures(selectedCountry, selectedShape, year, allFeatures) {
+            let filtered = allFeatures.filter(f => {
+                return (
+                    (selectedCountry === "all" || selectedCountry === "" ||
+                        f.properties.country_code === selectedCountry) &&
+                    (selectedShape === "all" ||
+                        f.properties.shape === selectedShape) &&
+                    f.properties.year <= year
+                );
+            });
+
+            return filtered;
+        }
+
+        function applyFilters(markersLayer, allFeatures) {
+            let selectedCountry = countryFilter.value;
+            let selectedShape = shapeFilter.value;
+            let year = parseInt(yearFilter.value);
+
+            let filtered = getFilteredFeatures(selectedCountry, selectedShape, year, allFeatures);
+            addMarkers(map, filtered, markersLayer);
+            updateChart(filtered);
+        }
+
+
+
+        function addCountriesBorders(map, countriesGeoJSON, markersLayer, allFeatures) {
             let countriesLayer = L.geoJSON(countriesGeoJSON, {
                 style: {
                     color: "#68d391",
@@ -428,7 +436,7 @@
 
                             console.log("Pays cliqué :", code);
                             countryFilter.value = code;
-                            applyFilters();
+                            applyFilters(markersLayer, allFeatures);
                         }
                     });
 
@@ -452,82 +460,113 @@
             });
         }
 
-        function updateThemeColors() {
-            const sidepanel = document.getElementById('sidepanel');
-            
+        function updateThemeColors(sidepanel, lightmode) {
+
+
             if (lightmode === "light") {
                 // Mode clair
                 sidepanel.style.background = 'rgba(247, 250, 252, 0.95)';
                 sidepanel.style.color = '#2d3748';
-                
+
                 document.querySelectorAll('label').forEach(label => {
                     label.style.color = '#4a5568';
                 });
-                
+
                 document.querySelectorAll('select, input').forEach(el => {
                     el.style.background = '#ffffff';
                     el.style.color = '#2d3748';
                     el.style.borderColor = '#cbd5e0';
                 });
-                
+
                 document.querySelector('h2').style.color = '#2d3748';
             } else {
                 // Mode sombre
                 sidepanel.style.background = 'rgba(40, 44, 52, 0.95)';
                 sidepanel.style.color = '#e6e6e6';
-                
+
                 document.querySelectorAll('label').forEach(label => {
                     label.style.color = '#cbd5e0';
                 });
-                
+
                 document.querySelectorAll('select, input').forEach(el => {
                     el.style.background = '#2d3748';
                     el.style.color = '#e6e6e6';
                     el.style.borderColor = '#4a5568';
                 });
-                
+
                 document.querySelector('h2').style.color = '#ffffff';
             }
         }
 
-        /* Init */
-        let map;
-        let allFeatures = [];
-        let markersLayer = L.layerGroup();
-        let chart;
-        let countriesSet = new Set();
-        let shapesSet = new Set();
-        let lightmode = "dark";
-        let tileLayer;
 
-        function createDistinctCountries(features) {
-            features.forEach(f => {
-                countriesSet.add(f.properties.country);
-            });
-            return Array.from(countriesSet).sort();
-        }
 
-        function loadBaseMap() {
+        function loadBaseMap(lightmode, tileLayer) {
             if (tileLayer) {
                 map.removeLayer(tileLayer);
             }
-
-            if (lightmode === "light") {
-                tileLayer = L.tileLayer(
-                    'https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}{r}.png', {
-                        maxZoom: 20
-                    }
-                );
-            } else {
-                tileLayer = L.tileLayer(
-                    'https://tiles.stadiamaps.com/tiles/stamen_toner_dark/{z}/{x}/{y}{r}.png', {
-                        maxZoom: 20
-                    }
-                );
-            }
+            let mode = (lightmode === "dark") ? '' : '_dark';
+            tileLayer = L.tileLayer(
+                'https://tiles.stadiamaps.com/tiles/stamen_toner' + mode + '/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 20
+                }
+            );
 
             tileLayer.addTo(map);
         }
+
+        function setLightButton(sidepanel, tileLayer) {
+            toggleTheme.onclick = () => {
+                lightmode = (lightmode === "dark") ? "light" : "dark";
+                toggleTheme.textContent =
+                    lightmode === "dark" ? "🌙 Mode sombre" : "☀️ Mode clair";
+                loadBaseMap(lightmode, tileLayer);
+                updateThemeColors(sidepanel, lightmode);
+            };
+        }
+
+        function initShapeFilter(allFeatures) {
+            // Populate shape filter
+            allFeatures.forEach(f => {
+                const shape = f.properties.shape;
+                if (!shape) return;
+
+                shapesMap.set(shape, (shapesMap.get(shape) || 0) + 1);
+            });
+
+            [...shapesMap.entries()].forEach(([shape, count]) => {
+                const opt = document.createElement("option");
+                opt.value = shape;
+                opt.textContent = `${shape} (${count})`;
+                shapeFilter.appendChild(opt);
+            });
+        }
+
+        function initCoutriesFilter(allFeatures) {
+            let countryMap = new Map();
+            allFeatures.forEach(f => {
+                if (f.properties.country_code && f.properties.country) {
+                    countryMap.set(f.properties.country_code, f.properties.country);
+                }
+            });
+            let sortedCountries = Array.from(countryMap.entries())
+                .map(([code, name]) => ({
+                    code,
+                    name
+                }))
+                .sort((a, b) => a.name.localeCompare(b.name));
+
+            // Populate country filter
+            sortedCountries.forEach(country => {
+                let opt = document.createElement("option");
+                opt.value = country.code;
+                opt.textContent = country.name;
+                countryFilter.appendChild(opt);
+            });
+        }
+
+        let map;
+        let shapesMap = new Map();
+        let lightmode = "dark";
 
         window.onload = async() => {
             map = L.map('map', {
@@ -537,80 +576,45 @@
             });
             map.zoomControl.setPosition('topright');
 
-            loadBaseMap();
-            
+            let lightmode = "dark";
+            let tileLayer;
+            loadBaseMap(lightmode, tileLayer);
+
             /* Charger les données */
-            allFeatures = await load_data();
+            let allFeatures = await load_data();
 
-            let countryMap = new Map();
-            allFeatures.forEach(f => {
-                if (f.properties.country_code && f.properties.country) {
-            countryMap.set(f.properties.country_code, f.properties.country);
-        }
-    });
-    let sortedCountries = Array.from(countryMap.entries())
-        .map(([code, name]) => ({ code, name }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-            // Populate country filter
-             sortedCountries.forEach(country => {
-        let opt = document.createElement("option");
-        opt.value = country.code;
-        opt.textContent = country.name;
-        countryFilter.appendChild(opt);
-    });
-
-            // Populate shape filter
-            allFeatures.forEach(f => {
-                if (f.properties.shape) {
-                    shapesSet.add(f.properties.shape);
-                }
-            });
-
-            [...shapesSet].sort().forEach(shape => {
-                let opt = document.createElement("option");
-                opt.value = shape;
-                opt.textContent = shape;
-                shapeFilter.appendChild(opt);
-            });
-
-            addMarkers(map, allFeatures);
+            let markersLayer = L.layerGroup();
+            addMarkers(map, allFeatures, markersLayer);
             updateChart(allFeatures);
+
+            initCoutriesFilter(allFeatures);
+            initShapeFilter(allFeatures);
+            countryFilter.onchange = () => applyFilters(markersLayer, allFeatures);
+            shapeFilter.onchange = () => applyFilters(markersLayer, allFeatures);
 
             let responseCountries = await fetch("data/countries.json");
             let countriesText = await responseCountries.text();
             let countriesGeoJSON = JSON.parse(countriesText);
 
-            addCountriesBorders(map, countriesGeoJSON);
-
-            countryFilter.onchange = applyFilters;
-            shapeFilter.onchange = applyFilters;
+            addCountriesBorders(map, countriesGeoJSON, markersLayer);
 
             yearFilter.oninput = () => {
                 yearValue.textContent = yearFilter.value;
-                applyFilters();
+                applyFilters(markersLayer, allFeatures);
             };
 
+            const sidepanel = document.getElementById("sidepanel");
             togglePanel.onclick = () => {
                 sidepanel.classList.toggle("collapsed");
                 togglePanel.textContent =
                     sidepanel.classList.contains("collapsed") ? "☰" : "✕";
             };
 
-            toggleTheme.onclick = () => {
-                lightmode = (lightmode === "dark") ? "light" : "dark";
-                toggleTheme.textContent =
-                    lightmode === "dark" ? "🌙 Mode sombre" : "☀️ Mode clair";
-                loadBaseMap();
-                updateThemeColors();
-            };
+            setLightButton(sidepanel, tileLayer);
 
-            createDistinctCountries(allFeatures);
-            console.log("Distinct countries:", countriesSet);
-            
-            // Initialiser avec les filtres
-            applyFilters();
+            applyFilters(markersLayer, allFeatures);
         };
     </script>
 </body>
+
 </html>
