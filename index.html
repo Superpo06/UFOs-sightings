@@ -109,53 +109,6 @@
 
     <script>
         "use strict";
-
-        function fromCSVtoJSON(csvText) {
-            let lines = csvText.trim().split("\n").slice(1); /*Divise le csv en lignes*/
-            let features = []; /*Tableau pour stocker les features*/
-
-            for (let line of lines) {
-                let cols = line.split(";"); /*Divise chaque ligne en colonnes*/
-
-                if (cols.length < 16) continue; /*Vérifie qu'il y a assez de colonnes*/
-
-                let lat = parseFloat(cols[11]);
-                let lon = parseFloat(cols[12]); /*Récupère la latitude et la longitude*/
-
-                if (isNaN(lat) || isNaN(lon)) continue;
-
-                /*Crée une feature GeoJSON pour chaque observation*/
-                features.push({
-                    type: "Feature",
-                    geometry: {
-                        type: "Point",
-                        coordinates: [lon, lat]
-                    },
-                    properties: {
-                        id: cols[0],
-                        datetime: cols[1],
-                        report_date: cols[2],
-                        year: parseInt(cols[3]),
-                        month: cols[4],
-                        hour: cols[5],
-                        season: cols[6],
-                        country_code: cols[7],
-                        country: cols[8],
-                        state: cols[9],
-                        city: cols[10],
-                        shape: cols[13],
-                        duration: cols[14],
-                        description: cols.slice(15).join(";")
-                    }
-                });
-            }
-            /*Retourne un objet FeatureCollection GeoJSON*/
-            return {
-                type: "FeatureCollection",
-                features
-            };
-        }
-
         /* Met en surbrillance la frontière du pays au survol */
         function highlightFeature(e) {
             e.target.setStyle({
@@ -270,6 +223,7 @@
 
 
         function addCountriesBorders(map, countriesGeoJSON) {
+
             let countriesLayer = L.geoJSON(countriesGeoJSON, {
                 style: {
                     color: "#00FF00",
@@ -277,24 +231,29 @@
                     fillOpacity: 0
                 },
                 onEachFeature: function(feature, layer) {
+
                     layer.on({
                         mouseover: highlightFeature,
                         mouseout: e => countriesLayer.resetStyle(e.target),
+
                         click: function() {
                             if (feature.properties && feature.properties.cca2) {
-                                let code = feature.properties.cca2;
-                                countryFilter.value = code; // select in dropdown
-                                applyFilters(); // apply filter
+                                const code = feature.properties.cca2;
+                                console.log("Pays cliqué :", code);
+                                countryFilter.value = code;
+
+                                applyFilters();
                             }
                         }
                     });
 
                     if (feature.properties && feature.properties.name) {
-                        layer.bindPopup(feature.properties.name);
+                        layer.bindPopup(feature.properties.name.common);
                     }
                 }
             }).addTo(map);
         }
+
 
 
 
