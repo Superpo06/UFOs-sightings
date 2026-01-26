@@ -98,7 +98,7 @@
         </select>
 
         <label for="yearFilter">Jusqu'à l'année</label>
-        <input type="range" id="yearFilter" min="1900" max="2025" value="2025">
+        <input type="range" id="yearFilter" min="1900" max="2025" value="1980">
         <span id="yearValue">2025</span>
 
         <canvas id="timeChart" height="200"></canvas>
@@ -237,14 +237,15 @@
                         mouseout: e => countriesLayer.resetStyle(e.target),
 
                         click: function() {
-                            if (feature.properties && feature.properties.cca2) {
-                                const code = feature.properties.cca2;
-                                console.log("Pays cliqué :", code);
-                                countryFilter.value = code;
+                            const code = feature.properties.cca2.toUpperCase();
+                            if (!code) return;
 
-                                applyFilters();
-                            }
+                            console.log("Pays cliqué :", code);
+
+                            countryFilter.value = code;
+                            applyFilters();
                         }
+
                     });
 
                     if (feature.properties && feature.properties.name) {
