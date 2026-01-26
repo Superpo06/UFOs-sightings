@@ -196,7 +196,8 @@
             let year = parseInt(yearFilter.value);
 
             let filtered = allFeatures.filter(f => {
-                return (selectedCountry === "all" || f.properties.country_code === selectedCountry) &&
+                return (selectedCountry === "all" ||
+                        f.properties.country_code === selectedCountry) &&
                     f.properties.year <= year;
             });
 
@@ -297,12 +298,12 @@
 
 
 
-        function load_data() {
-            let response = fetch("data/ufo-sightings.csv");
-            let csvTextData = response.text();
-            let jsondata = fromCSVtoJSON(csvTextData);
-            return jsondata;
+        async function load_data() {
+            const response = await fetch("data/ufo-sightings-with-codes.geojson");
+            const geojson = await response.json();
+            return geojson.features;
         }
+
 
         /* Init */
         let map;
@@ -324,13 +325,11 @@
                 }
             ).addTo(map);
 
-            await loadCountryMapping();
-
             /* Créee les feature et ajoute le mapping */
-            allFeatures = await load_data().features;
+            allFeatures = await load_data();
 
-            /* Country filter */
-            let countries = [...new Set(allFeatures.map(f => f.properties.country))].sort();
+            let countries = [...new Set(allFeatures.map(f => f.properties.country_code))].sort();
+
             countries.forEach(s => {
                 let opt = document.createElement("option");
                 opt.value = s;
