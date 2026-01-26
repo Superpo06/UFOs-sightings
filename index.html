@@ -279,7 +279,7 @@
         }
 
         async function load_data() {
-            const response = await fetch("data/ufo-sightings-with-codes.geojson");
+            const response = await fetch("data/ufo-sightings-with-codes-v2.geojson");
             const geojson = await response.json();
             return geojson.features;
         }
