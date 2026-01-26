@@ -15,6 +15,7 @@
             margin: 0;
             padding: 0;
             height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
         }
         
         #map {
@@ -24,72 +25,173 @@
             right: 0;
             bottom: 0;
         }
-        /* Side panel */
         
-        #sidepanel {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 300px;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            color: white;
-            padding: 15px;
-            z-index: 1000;
-            transition: transform 0.3s;
-            overflow-y: auto;
-        }
-        
-        #sidepanel.collapsed {
-            transform: translateX(-260px);
-        }
-        
-        #togglePanel {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 40px;
-            height: 40px;
-            background: black;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            z-index: 1100;
-        }
+     /* Panneau normal */
+#sidepanel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 300px;
+    height: 100%;
+    background: rgba(40, 44, 52, 0.95);
+    color: #e6e6e6;
+    padding: 20px;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+    overflow-y: auto;
+    backdrop-filter: blur(5px);
+}
+
+/* Panneau complètement caché sauf le bouton */
+#sidepanel.collapsed {
+    transform: translateX(-100%); /* Cache 100% */
+    background: transparent;
+}
+
+/* Bouton flottant indépendant */
+#togglePanel {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    width: 40px;
+    height: 40px;
+    background: #4299e1;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    z-index: 1100;
+    border-radius: 4px;
+    transition: background 0.2s, transform 0.3s ease;
+}
+
+#togglePanel:hover {
+    background: #3182ce;
+}
+
+/* Déplace le bouton quand le panneau est ouvert */
+#sidepanel:not(.collapsed) + #togglePanel {
+    left: 310px; /* 300px (largeur panneau) + 10px (marge) */
+}
+
+/* Contenu avec transitions */
+#panelContent {
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: auto;
+}
+
+#sidepanel.collapsed #panelContent {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+#sidepanel:not(.collapsed) #panelContent {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
         
         h2 {
             margin-top: 40px;
             font-size: 18px;
+            color: #ffffff;
+            font-weight: 600;
+            border-bottom: 1px solid #4a5568;
+            padding-bottom: 8px;
         }
         
         label {
             display: block;
-            margin-top: 15px;
+            margin-top: 20px;
             font-size: 14px;
+            color: #cbd5e0;
+            font-weight: 500;
         }
         
         select,
         input {
             width: 100%;
+            padding: 8px 12px;
+            margin-top: 5px;
+            border: 1px solid #4a5568;
+            border-radius: 4px;
+            background: #2d3748;
+            color: #e6e6e6;
+            font-size: 14px;
+            transition: border 0.2s;
+        }
+        
+        select:focus,
+        input:focus {
+            outline: none;
+            border-color: #63b3ed;
+            box-shadow: 0 0 0 1px rgba(99, 179, 237, 0.2);
+        }
+        
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 6px;
+            background: #4a5568;
+            border-radius: 3px;
+            margin-top: 10px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #4299e1;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: #4299e1;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
         }
         
         #yearValue {
             font-size: 13px;
+            color: #a0aec0;
+            display: inline-block;
+            margin-left: 10px;
         }
         
         canvas {
-            margin-top: 20px;
+            margin-top: 25px;
+            border-radius: 4px;
+            background: rgba(45, 55, 72, 0.5);
+        }
+        
+        #toggleTheme {
+            width: 100%;
+            margin-top: 15px;
+            padding: 10px;
+            background: #4299e1;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        
+        #toggleTheme:hover {
+            background: #3182ce;
         }
     </style>
 </head>
 
 <body>
-
     <!-- Side Panel -->
-    <div id="sidepanel" class="collapsed">
-        <button id="togglePanel">☰</button>
-
+<button id="togglePanel">☰</button>
+<div id="sidepanel" class="collapsed">
+    <div id="panelContent">
         <h2>Observations OVNI</h2>
 
         <label for="countryFilter">Pays</label>
@@ -103,28 +205,29 @@
             <option value="all">Toutes les formes</option>
         </select>
 
-
         <label for="yearFilter">Jusqu'à l'année</label>
         <input type="range" id="yearFilter" min="1900" max="2025" value="1980">
-        <span id="yearValue">2025</span>
+        <span id="yearValue">1980</span>
 
         <canvas id="timeChart" height="200"></canvas>
         <button id="toggleTheme" style="width:100%; margin-top:10px;">
-    🌙 Mode sombre
+            🌙 Mode sombre
         </button>
-
     </div>
+</div>
 
     <!-- Map -->
     <div id="map"></div>
 
     <script>
         "use strict";
+        
         /* Met en surbrillance la frontière du pays au survol */
         function highlightFeature(e) {
             e.target.setStyle({
                 weight: 3,
-                color: '#FFFF00'
+                color: '#ecc94b',
+                opacity: 0.8
             });
         }
 
@@ -137,31 +240,37 @@
                 let lon = f.geometry.coordinates[0];
 
                 let popup = `
-                    <b>${f.properties.city}, ${f.properties.state}</b><br>
-                    <b>Forme :</b> ${f.properties.shape}<br>
-                    <b>Année :</b> ${f.properties.year}<br>
-                    <b>Durée :</b> ${f.properties.duration}<br><br>
-                    ${f.properties.description}
+                    <div style="font-family: sans-serif; max-width: 300px;">
+                        <h3 style="margin: 0 0 10px 0; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
+                            ${f.properties.city}, ${f.properties.state}
+                        </h3>
+                        <p style="margin: 5px 0;"><strong>Forme :</strong> ${f.properties.shape}</p>
+                        <p style="margin: 5px 0;"><strong>Année :</strong> ${f.properties.year}</p>
+                        <p style="margin: 5px 0;"><strong>Durée :</strong> ${f.properties.duration}</p>
+                        <p style="margin: 10px 0 0 0; color: #4a5568; font-size: 14px;">
+                            ${f.properties.description}
+                        </p>
+                    </div>
                 `;
 
                 L.circleMarker([lat, lon], {
-                        radius: 4,
-                        color: "#00ffcc",
-                        weight: 1,
-                        fillOpacity: 0.8
-                    })
-                    .on("click", () => {
-                        focusOnEvent(lat, lon, 8);
-                    })
-                    .bindPopup(popup)
-                    .addTo(markersLayer);
-
+                    radius: 5,
+                    color: "#4299e1",
+                    weight: 1.5,
+                    fillColor: "#63b3ed",
+                    fillOpacity: 0.7
+                })
+                .on("click", () => {
+                    focusOnEvent(lat, lon, 8);
+                })
+                .bindPopup(popup)
+                .addTo(markersLayer);
             }
 
             markersLayer.addTo(map);
         }
 
-        function applyFilters() {
+        function getFilteredFeatures() {
             let selectedCountry = countryFilter.value;
             let selectedShape = shapeFilter.value;
             let year = parseInt(yearFilter.value);
@@ -176,10 +285,14 @@
                 );
             });
 
+            return filtered;
+        }
+
+        function applyFilters() {
+            let filtered = getFilteredFeatures();
             addMarkers(map, filtered);
             updateChart(filtered);
         }
-
 
         /* Chart */
         function updateChart(features) {
@@ -207,9 +320,22 @@
 
             const maxValue = Math.max(...values);
 
+            // Grille de fond
+            ctx.strokeStyle = "rgba(160, 174, 192, 0.2)";
+            ctx.lineWidth = 0.5;
+            
+            // Lignes horizontales
+            for (let i = 0; i <= 5; i++) {
+                const y = padding + (h / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(padding + w, y);
+                ctx.stroke();
+            }
+
             // Axes
-            ctx.strokeStyle = "white";
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = "#a0aec0";
+            ctx.lineWidth = 1.5;
 
             ctx.beginPath();
             ctx.moveTo(padding, padding);
@@ -217,9 +343,15 @@
             ctx.lineTo(padding + w, padding + h);
             ctx.stroke();
 
-            // Courbe
-            ctx.strokeStyle = "#00ffcc";
-            ctx.lineWidth = 2;
+            // Courbe avec gradient
+            const gradient = ctx.createLinearGradient(padding, 0, padding + w, 0);
+            gradient.addColorStop(0, '#4299e1');
+            gradient.addColorStop(1, '#68d391');
+            
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 3;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
             ctx.beginPath();
 
             years.forEach((year, i) => {
@@ -232,43 +364,72 @@
 
             ctx.stroke();
 
+            // Remplissage sous la courbe
+            ctx.fillStyle = 'rgba(99, 179, 237, 0.1)';
+            ctx.beginPath();
+            years.forEach((year, i) => {
+                const x = padding + (i / (years.length - 1)) * w;
+                const y = padding + h - (values[i] / maxValue) * h;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.lineTo(padding + w, padding + h);
+            ctx.lineTo(padding, padding + h);
+            ctx.closePath();
+            ctx.fill();
+
             // Points
-            ctx.fillStyle = "#00ffcc";
+            ctx.fillStyle = "#ffffff";
+            ctx.strokeStyle = "#4299e1";
+            ctx.lineWidth = 2;
+            
             years.forEach((year, i) => {
                 const x = padding + (i / (years.length - 1)) * w;
                 const y = padding + h - (values[i] / maxValue) * h;
 
                 ctx.beginPath();
-                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
                 ctx.fill();
+                ctx.stroke();
+            });
+
+            // Labels des années (tous les 5 ans)
+            ctx.fillStyle = "#a0aec0";
+            ctx.font = "10px sans-serif";
+            ctx.textAlign = "center";
+            
+            years.forEach((year, i) => {
+                if (years.length <= 10 || i % Math.floor(years.length / 5) === 0) {
+                    const x = padding + (i / (years.length - 1)) * w;
+                    ctx.fillText(year, x, padding + h + 15);
+                }
             });
         }
 
-
         function addCountriesBorders(map, countriesGeoJSON) {
-
             let countriesLayer = L.geoJSON(countriesGeoJSON, {
                 style: {
-                    color: "#00FF00",
-                    weight: 2,
-                    fillOpacity: 0
+                    color: "#68d391",
+                    weight: 1.5,
+                    fillOpacity: 0.1,
+                    fillColor: "#68d391"
                 },
                 onEachFeature: function(feature, layer) {
-
                     layer.on({
                         mouseover: highlightFeature,
                         mouseout: e => countriesLayer.resetStyle(e.target),
-
                         click: function() {
                             const code = feature.properties.cca2.toUpperCase();
                             if (!code) return;
 
                             console.log("Pays cliqué :", code);
-
                             countryFilter.value = code;
                             applyFilters();
                         }
-
                     });
 
                     if (feature.properties && feature.properties.name) {
@@ -291,6 +452,44 @@
             });
         }
 
+        function updateThemeColors() {
+            const sidepanel = document.getElementById('sidepanel');
+            
+            if (lightmode === "light") {
+                // Mode clair
+                sidepanel.style.background = 'rgba(247, 250, 252, 0.95)';
+                sidepanel.style.color = '#2d3748';
+                
+                document.querySelectorAll('label').forEach(label => {
+                    label.style.color = '#4a5568';
+                });
+                
+                document.querySelectorAll('select, input').forEach(el => {
+                    el.style.background = '#ffffff';
+                    el.style.color = '#2d3748';
+                    el.style.borderColor = '#cbd5e0';
+                });
+                
+                document.querySelector('h2').style.color = '#2d3748';
+            } else {
+                // Mode sombre
+                sidepanel.style.background = 'rgba(40, 44, 52, 0.95)';
+                sidepanel.style.color = '#e6e6e6';
+                
+                document.querySelectorAll('label').forEach(label => {
+                    label.style.color = '#cbd5e0';
+                });
+                
+                document.querySelectorAll('select, input').forEach(el => {
+                    el.style.background = '#2d3748';
+                    el.style.color = '#e6e6e6';
+                    el.style.borderColor = '#4a5568';
+                });
+                
+                document.querySelector('h2').style.color = '#ffffff';
+            }
+        }
+
         /* Init */
         let map;
         let allFeatures = [];
@@ -299,7 +498,7 @@
         let countriesSet = new Set();
         let shapesSet = new Set();
         let lightmode = "dark";
-
+        let tileLayer;
 
         function createDistinctCountries(features) {
             features.forEach(f => {
@@ -307,8 +506,6 @@
             });
             return Array.from(countriesSet).sort();
         }
-
-        let tileLayer;
 
         function loadBaseMap() {
             if (tileLayer) {
@@ -332,27 +529,28 @@
             tileLayer.addTo(map);
         }
 
-
         window.onload = async() => {
             map = L.map('map', {
                 center: [20, 0],
                 zoom: 3,
                 minZoom: 2
             });
+            map.zoomControl.setPosition('topright');
+
             loadBaseMap();
-            /* Créee les feature et ajoute le mapping */
+            
+            /* Charger les données */
             allFeatures = await load_data();
 
             let countries = [...new Set(allFeatures.map(f => f.properties.country_code))].sort();
 
-            //populate country filter
+            // Populate country filter
             countries.forEach(s => {
                 let opt = document.createElement("option");
                 opt.value = s;
                 opt.textContent = s;
                 countryFilter.appendChild(opt);
             });
-
 
             // Populate shape filter
             allFeatures.forEach(f => {
@@ -368,14 +566,12 @@
                 shapeFilter.appendChild(opt);
             });
 
-
             addMarkers(map, allFeatures);
             updateChart(allFeatures);
 
             let responseCountries = await fetch("data/countries.json");
             let countriesText = await responseCountries.text();
             let countriesGeoJSON = JSON.parse(countriesText);
-
 
             addCountriesBorders(map, countriesGeoJSON);
 
@@ -398,16 +594,15 @@
                 toggleTheme.textContent =
                     lightmode === "dark" ? "🌙 Mode sombre" : "☀️ Mode clair";
                 loadBaseMap();
+                updateThemeColors();
             };
-
 
             createDistinctCountries(allFeatures);
             console.log("Distinct countries:", countriesSet);
+            
+            // Initialiser avec les filtres
             applyFilters();
-
         };
     </script>
-
 </body>
-
 </html>
