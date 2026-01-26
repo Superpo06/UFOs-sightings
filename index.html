@@ -542,15 +542,23 @@
             /* Charger les données */
             allFeatures = await load_data();
 
-            let countries = [...new Set(allFeatures.map(f => f.properties.country_code))].sort();
+            let countryMap = new Map();
+            allFeatures.forEach(f => {
+                if (f.properties.country_code && f.properties.country) {
+            countryMap.set(f.properties.country_code, f.properties.country);
+        }
+    });
+    let sortedCountries = Array.from(countryMap.entries())
+        .map(([code, name]) => ({ code, name }))
+        .sort((a, b) => a.name.localeCompare(b.name));
 
             // Populate country filter
-            countries.forEach(s => {
-                let opt = document.createElement("option");
-                opt.value = s;
-                opt.textContent = s;
-                countryFilter.appendChild(opt);
-            });
+             sortedCountries.forEach(country => {
+        let opt = document.createElement("option");
+        opt.value = country.code;
+        opt.textContent = country.name;
+        countryFilter.appendChild(opt);
+    });
 
             // Populate shape filter
             allFeatures.forEach(f => {
