@@ -412,28 +412,12 @@
         function addMarkers(map, features, markersLayer) {
             markersLayer.clearLayers();
 
-            for (let f of features) {
-                let lat = f.geometry.coordinates[1];
-                let lon = f.geometry.coordinates[0];
-
-                let popup = createPopupContent(f);
-
-                L.circleMarker([lat, lon], {
-                        radius: 5,
-                        color: "#4299e1",
-                        weight: 1.5,
-                        fillColor: "#63b3ed",
-                        fillOpacity: 0.7
-                    })
-                    .on("click", () => {
-                        focusOnEvent(lat, lon, 8);
-                    })
-                    .bindPopup(popup)
-                    .addTo(markersLayer);
-            }
+            const clusters = createDensityClusters(features);
+            addDensityMarkers(map, clusters, features, markersLayer);
 
             markersLayer.addTo(map);
         }
+
 
         function getFilteredFeatures(selectedCountry, selectedShape, year, allFeatures) {
             let filtered = allFeatures.filter(f => {
@@ -611,6 +595,132 @@
                     sidepanel.classList.contains("collapsed") ? "☰" : "✕";
             };
         }
+
+        const DENSITY_RADIUS_KM = 20;
+        const DENSITY_THRESHOLD = 100;
+
+        function isInsideDensityZone(latlng, densityZones, map) {
+            const point = map.latLngToLayerPoint(latlng);
+
+            return densityZones.some(zone => {
+                const center = map.latLngToLayerPoint(zone.latlng);
+                return point.distanceTo(center) <= zone.radius;
+            });
+        }
+
+
+        function createDensityClusters(features) {
+            const clusters = [];
+            const used = new Set();
+
+            const radiusMeters = DENSITY_RADIUS_KM * 1000;
+
+            features.forEach((f, i) => {
+                if (used.has(i)) return;
+
+                const center = L.latLng(
+                    f.geometry.coordinates[1],
+                    f.geometry.coordinates[0]
+                );
+
+                let cluster = {
+                    latlng: center,
+                    indices: [i]
+                };
+
+                used.add(i);
+
+                features.forEach((other, j) => {
+                    if (used.has(j) || i === j) return;
+
+                    const point = L.latLng(
+                        other.geometry.coordinates[1],
+                        other.geometry.coordinates[0]
+                    );
+
+                    if (center.distanceTo(point) <= radiusMeters) {
+                        cluster.indices.push(j);
+                        used.add(j);
+                    }
+                });
+
+                clusters.push(cluster);
+            });
+
+            return clusters;
+        }
+
+        function addDensityMarkers(map, clusters, features, layer) {
+            const densityZones = [];
+
+            // First pass: draw density markers
+            clusters.forEach(cluster => {
+                const count = cluster.indices.length;
+
+                if (count >= DENSITY_THRESHOLD) {
+                    const radius = Math.min(40, 12 + count / 10);
+
+                    densityZones.push({
+                        latlng: cluster.latlng,
+                        radius
+                    });
+
+                    L.circleMarker(cluster.latlng, {
+                            radius,
+                            color: "#f56565",
+                            weight: 2,
+                            fillColor: "#fc8181",
+                            fillOpacity: 0.8
+                        })
+                        .bindTooltip(
+                            `<strong>${count}</strong> observations`, {
+                                permanent: true,
+                                direction: "center",
+                                className: "density-label"
+                            }
+                        )
+                        .on("click", () => map.flyTo(cluster.latlng, 7))
+                        .addTo(layer);
+                }
+            });
+
+            // Second pass: draw singles ONLY if not visually covered
+            clusters.forEach(cluster => {
+                if (cluster.indices.length < DENSITY_THRESHOLD) {
+                    cluster.indices.forEach(i => {
+                        const f = features[i];
+                        const latlng = L.latLng(
+                            f.geometry.coordinates[1],
+                            f.geometry.coordinates[0]
+                        );
+
+                        if (!isInsideDensityZone(latlng, densityZones, map)) {
+                            addSingleMarker(f, layer);
+                        }
+                    });
+                }
+            });
+        }
+
+
+
+        function addSingleMarker(f, layer) {
+            const lat = f.geometry.coordinates[1];
+            const lon = f.geometry.coordinates[0];
+
+            L.circleMarker([lat, lon], {
+                    radius: 5,
+                    color: "#4299e1",
+                    weight: 1.5,
+                    fillColor: "#63b3ed",
+                    fillOpacity: 0.7
+                })
+                .on("click", () => focusOnEvent(lat, lon, 8))
+                .bindPopup(createPopupContent(f))
+                .addTo(layer);
+        }
+
+
 
         let map;
         let shapesMap = new Map();
