@@ -94,14 +94,25 @@
 
         <label for="countryFilter">Pays</label>
         <select id="countryFilter">
+            <option value="" disabled selected>— Sélectionner un pays —</option>
             <option value="all">Tous les pays</option>
         </select>
+
+        <label for="shapeFilter">Forme de l'observation</label>
+        <select id="shapeFilter">
+            <option value="all">Toutes les formes</option>
+        </select>
+
 
         <label for="yearFilter">Jusqu'à l'année</label>
         <input type="range" id="yearFilter" min="1900" max="2025" value="1980">
         <span id="yearValue">2025</span>
 
         <canvas id="timeChart" height="200"></canvas>
+        <button id="toggleTheme" style="width:100%; margin-top:10px;">
+    🌙 Mode sombre
+        </button>
+
     </div>
 
     <!-- Map -->
@@ -134,11 +145,17 @@
                 `;
 
                 L.circleMarker([lat, lon], {
-                    radius: 4,
-                    color: "#00ffcc",
-                    weight: 1,
-                    fillOpacity: 0.8
-                }).bindPopup(popup).addTo(markersLayer);
+                        radius: 4,
+                        color: "#00ffcc",
+                        weight: 1,
+                        fillOpacity: 0.8
+                    })
+                    .on("click", () => {
+                        focusOnEvent(lat, lon, 8);
+                    })
+                    .bindPopup(popup)
+                    .addTo(markersLayer);
+
             }
 
             markersLayer.addTo(map);
@@ -146,17 +163,23 @@
 
         function applyFilters() {
             let selectedCountry = countryFilter.value;
+            let selectedShape = shapeFilter.value;
             let year = parseInt(yearFilter.value);
 
             let filtered = allFeatures.filter(f => {
-                return (selectedCountry === "all" ||
+                return (
+                    (selectedCountry === "all" || selectedCountry === "" ||
                         f.properties.country_code === selectedCountry) &&
-                    f.properties.year <= year;
+                    (selectedShape === "all" ||
+                        f.properties.shape === selectedShape) &&
+                    f.properties.year <= year
+                );
             });
 
             addMarkers(map, filtered);
             updateChart(filtered);
         }
+
 
         /* Chart */
         function updateChart(features) {
@@ -255,15 +278,18 @@
             }).addTo(map);
         }
 
-
-
-
         async function load_data() {
             const response = await fetch("data/ufo-sightings-with-codes.geojson");
             const geojson = await response.json();
             return geojson.features;
         }
 
+        function focusOnEvent(lat, lon, zoom = 8) {
+            map.flyTo([lat, lon], zoom, {
+                animate: true,
+                duration: 1
+            });
+        }
 
         /* Init */
         let map;
@@ -271,6 +297,9 @@
         let markersLayer = L.layerGroup();
         let chart;
         let countriesSet = new Set();
+        let shapesSet = new Set();
+        let lightmode = "dark";
+
 
         function createDistinctCountries(features) {
             features.forEach(f => {
@@ -279,30 +308,66 @@
             return Array.from(countriesSet).sort();
         }
 
+        let tileLayer;
+
+        function loadBaseMap() {
+            if (tileLayer) {
+                map.removeLayer(tileLayer);
+            }
+
+            if (lightmode === "light") {
+                tileLayer = L.tileLayer(
+                    'https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}{r}.png', {
+                        maxZoom: 20
+                    }
+                );
+            } else {
+                tileLayer = L.tileLayer(
+                    'https://tiles.stadiamaps.com/tiles/stamen_toner_dark/{z}/{x}/{y}{r}.png', {
+                        maxZoom: 20
+                    }
+                );
+            }
+
+            tileLayer.addTo(map);
+        }
+
+
         window.onload = async() => {
             map = L.map('map', {
                 center: [20, 0],
                 zoom: 3,
                 minZoom: 2
             });
-
-            L.tileLayer(
-                'https://tiles.stadiamaps.com/tiles/stamen_toner_dark/{z}/{x}/{y}{r}.png', {
-                    maxZoom: 20
-                }
-            ).addTo(map);
-
+            loadBaseMap();
             /* Créee les feature et ajoute le mapping */
             allFeatures = await load_data();
 
             let countries = [...new Set(allFeatures.map(f => f.properties.country_code))].sort();
 
+            //populate country filter
             countries.forEach(s => {
                 let opt = document.createElement("option");
                 opt.value = s;
                 opt.textContent = s;
                 countryFilter.appendChild(opt);
             });
+
+
+            // Populate shape filter
+            allFeatures.forEach(f => {
+                if (f.properties.shape) {
+                    shapesSet.add(f.properties.shape);
+                }
+            });
+
+            [...shapesSet].sort().forEach(shape => {
+                let opt = document.createElement("option");
+                opt.value = shape;
+                opt.textContent = shape;
+                shapeFilter.appendChild(opt);
+            });
+
 
             addMarkers(map, allFeatures);
             updateChart(allFeatures);
@@ -315,6 +380,8 @@
             addCountriesBorders(map, countriesGeoJSON);
 
             countryFilter.onchange = applyFilters;
+            shapeFilter.onchange = applyFilters;
+
             yearFilter.oninput = () => {
                 yearValue.textContent = yearFilter.value;
                 applyFilters();
@@ -326,8 +393,17 @@
                     sidepanel.classList.contains("collapsed") ? "☰" : "✕";
             };
 
+            toggleTheme.onclick = () => {
+                lightmode = (lightmode === "dark") ? "light" : "dark";
+                toggleTheme.textContent =
+                    lightmode === "dark" ? "🌙 Mode sombre" : "☀️ Mode clair";
+                loadBaseMap();
+            };
+
+
             createDistinctCountries(allFeatures);
             console.log("Distinct countries:", countriesSet);
+            applyFilters();
 
         };
     </script>
