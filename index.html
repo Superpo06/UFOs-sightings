@@ -186,6 +186,60 @@
         #toggleTheme:hover {
             background: #3182ce;
         }
+        /* Double slider styles */
+        .double-slider-container {
+            margin: 20px 0;
+        }
+
+        .slider-track {
+            position: relative;
+            height: 6px;
+            background: #4a5568;
+            border-radius: 3px;
+            margin: 20px 0;
+        }
+
+        .slider-fill {
+            position: absolute;
+            height: 6px;
+            background: #4299e1;
+            border-radius: 3px;
+            top: 0;
+        }
+
+        .slider-thumb {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: #4299e1;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            top: -6px;
+            transform: translateX(-50%);
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .slider-thumb:hover {
+            background: #3182ce;
+        }
+
+        #yearRangeDisplay {
+            display: inline-block;
+            padding: 6px 12px;
+            background: rgba(99, 179, 237, 0.1);
+            border-radius: 4px;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .slider-thumb.active {
+    background: #63b3ed;
+    transform: translateX(-50%) scale(1.2);
+    box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.3);
+}
+
+
     </style>
 </head>
 
@@ -207,16 +261,28 @@
             <option value="all">Toutes les formes</option>
         </select>
 
-            <label for="yearFilter">Jusqu'à l'année</label>
-            <input type="range" id="yearFilter" min="1900" max="2025" value="1980">
-            <span id="yearValue">1980</span>
+           <label for="yearRange">Période</label>
+                <div class="double-slider-container">
+                    <div class="slider-track" id="sliderTrack">
+                        <div class="slider-fill" id="sliderFill"></div>
+                        <div class="slider-thumb" id="thumbMin"></div>
+                        <div class="slider-thumb" id="thumbMax"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                        <span id="yearMinValue">1900</span>
+                        <span id="yearMaxValue">2025</span>
+                    </div>
+                    <div style="text-align: center; margin-top: 5px;">
+                        <span id="yearRangeDisplay" style="color: #63b3ed; font-weight: 500;">1900 - 2025</span>
+                    </div>
+                </div>
 
-            <canvas id="timeChart" height="200"></canvas>
-            <button id="toggleTheme" style="width:100%; margin-top:10px;">
-            🌙 Mode sombre
-        </button>
+                <canvas id="timeChart" height="200"></canvas>
+                <button id="toggleTheme" style="width:100%; margin-top:10px;">
+                🌙 Mode sombre
+            </button>
+            </div>
         </div>
-    </div>
 
     <!-- Map -->
     <div id="map"></div>
@@ -435,14 +501,15 @@
             markersLayer.addTo(map);
         }
 
-        function getFilteredFeatures(selectedCountry, selectedShape, year, allFeatures) {
+        function getFilteredFeatures(selectedCountry, selectedShape, yearMin, yearMax, allFeatures) {
             let filtered = allFeatures.filter(f => {
                 return (
                     (selectedCountry === "all" || selectedCountry === "" ||
                         f.properties.country_code === selectedCountry) &&
                     (selectedShape === "all" ||
                         f.properties.shape === selectedShape) &&
-                    f.properties.year <= year
+                    f.properties.year >= yearMin &&
+                    f.properties.year <= yearMax
                 );
             });
 
@@ -452,9 +519,13 @@
         function applyFilters(markersLayer, allFeatures) {
             let selectedCountry = countryFilter.value;
             let selectedShape = shapeFilter.value;
-            let year = parseInt(yearFilter.value);
+            const yearMin = parseInt(document.getElementById('yearMinValue').textContent);
+            const yearMax = parseInt(document.getElementById('yearMaxValue').textContent);
 
-            let filtered = getFilteredFeatures(selectedCountry, selectedShape, year, allFeatures);
+            const actualYearMin = Math.min(yearMin, yearMax);
+            const actualYearMax = Math.max(yearMin, yearMax);
+
+            let filtered = getFilteredFeatures(selectedCountry, selectedShape, actualYearMin, actualYearMax, allFeatures);
             addMarkers(map, filtered, markersLayer);
             updateChart(filtered);
         }
@@ -582,7 +653,7 @@
             });
         }
 
-        function initCoutriesFilter(allFeatures) {
+        function initCountriesFilter(allFeatures) {
             let countryMap = new Map();
             allFeatures.forEach(f => {
                 if (f.properties.country_code && f.properties.country) {
@@ -612,6 +683,187 @@
             };
         }
 
+       function initSimpleDoubleSlider(allFeatures, markersLayer) {
+    const years = allFeatures.map(f => f.properties.year).filter(y => !isNaN(y));
+    const minYear = Math.min(...years);
+    const maxYear = Math.max(...years);
+    
+    const track = document.getElementById('sliderTrack');
+    const fill = document.getElementById('sliderFill');
+    const thumbMin = document.getElementById('thumbMin');
+    const thumbMax = document.getElementById('thumbMax');
+    const yearMinDisplay = document.getElementById('yearMinValue');
+    const yearMaxDisplay = document.getElementById('yearMaxValue');
+    const rangeDisplay = document.getElementById('yearRangeDisplay');
+    
+    let minValue = minYear;
+    let maxValue = maxYear;
+    let activeThumb = null;
+    let lastClickedThumb = thumbMin;
+    
+    function updateDisplay() {
+        if (minValue > maxValue) {
+            [minValue, maxValue] = [maxValue, minValue];
+        }
+        
+        const minPercent = ((minValue - minYear) / (maxYear - minYear)) * 100;
+        const maxPercent = ((maxValue - minYear) / (maxYear - minYear)) * 100;
+        
+        thumbMin.style.left = `${minPercent}%`;
+        thumbMax.style.left = `${maxPercent}%`;
+        fill.style.left = `${minPercent}%`;
+        fill.style.width = `${maxPercent - minPercent}%`;
+        
+        if (minValue === maxValue) {
+            if (lastClickedThumb === thumbMin) {
+                thumbMin.style.zIndex = "10";
+                thumbMax.style.zIndex = "9";
+            } else {
+                thumbMin.style.zIndex = "9";
+                thumbMax.style.zIndex = "10";
+            }
+        } else {
+            thumbMin.style.zIndex = "10";
+            thumbMax.style.zIndex = "10";
+        }
+        
+        yearMinDisplay.textContent = minValue;
+        yearMaxDisplay.textContent = maxValue;
+        rangeDisplay.textContent = minValue === maxValue ? 
+            `${minValue}` : 
+            `${minValue} - ${maxValue}`;
+    }
+    
+    function getYearFromPosition(clientX) {
+        const rect = track.getBoundingClientRect();
+        const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        return Math.round(minYear + percent * (maxYear - minYear));
+    }
+    
+    function handleMouseDown(e) {
+        e.preventDefault();
+        activeThumb = e.target;
+        activeThumb.classList.add('active');
+        
+        lastClickedThumb = activeThumb;
+        
+        const startX = e.clientX;
+        const startMin = minValue;
+        const startMax = maxValue;
+        const wereValuesEqual = (minValue === maxValue);
+        
+        function handleMouseMove(e) {
+            if (!activeThumb) return;
+            
+            const deltaX = e.clientX - startX;
+            const deltaYear = Math.round((deltaX / track.offsetWidth) * (maxYear - minYear));
+            
+            if (activeThumb === thumbMin) {
+                let newMin = startMin + deltaYear;
+                
+                newMin = Math.max(minYear, Math.min(newMin, maxValue));
+                
+                minValue = newMin;
+            } else {
+                let newMax = startMax + deltaYear;
+                
+                newMax = Math.min(maxYear, Math.max(newMax, minValue));
+                
+                maxValue = newMax;
+            }
+            
+            updateDisplay();
+        }
+        
+        function handleMouseUp() {
+            if (activeThumb) {
+                activeThumb.classList.remove('active');
+                applyFilters(markersLayer, allFeatures);
+            }
+            
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            activeThumb = null;
+        }
+        
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }
+    
+    function handleTrackClick(e) {
+        if (e.target === thumbMin || e.target === thumbMax) {
+            return;
+        }
+        
+        const clickedYear = getYearFromPosition(e.clientX);
+        const rect = track.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const trackWidth = rect.width;
+        
+        const minPercent = ((minValue - minYear) / (maxYear - minYear));
+        const maxPercent = ((maxValue - minYear) / (maxYear - minYear));
+        const minPos = minPercent * trackWidth;
+        const maxPos = maxPercent * trackWidth;
+        
+        const distToMin = Math.abs(clickX - minPos);
+        const distToMax = Math.abs(clickX - maxPos);
+        
+        let moveMin = false;
+        
+        if (minValue === maxValue) {
+            if (clickX < minPos) {
+                moveMin = true;
+            } else if (clickX > maxPos) {
+                moveMin = false;
+            } else {
+                moveMin = (lastClickedThumb === thumbMin);
+            }
+        } else {
+            moveMin = (distToMin < distToMax);
+        }
+        
+        if (moveMin) {
+            minValue = clickedYear;
+            lastClickedThumb = thumbMin;
+        } else {
+            maxValue = clickedYear;
+            lastClickedThumb = thumbMax;
+        }
+        
+        if (minValue > maxValue) {
+            [minValue, maxValue] = [maxValue, minValue];
+            lastClickedThumb = (lastClickedThumb === thumbMin) ? thumbMax : thumbMin;
+        }
+        
+        updateDisplay();
+        applyFilters(markersLayer, allFeatures);
+    }
+    
+    thumbMin.addEventListener('mousedown', handleMouseDown);
+    thumbMax.addEventListener('mousedown', handleMouseDown);
+    track.addEventListener('click', handleTrackClick);
+    
+    thumbMin.addEventListener('dragstart', (e) => e.preventDefault());
+    thumbMax.addEventListener('dragstart', (e) => e.preventDefault());
+    
+    const style = document.createElement('style');
+    style.textContent = `
+        .slider-thumb {
+            transition: z-index 0.2s;
+        }
+        .slider-thumb.active {
+            background: #63b3ed;
+            transform: translateX(-50%) scale(1.2);
+            box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.3);
+            z-index: 11 !important; /* Toujours au-dessus quand actif */
+        }
+    `;
+    document.head.appendChild(style);
+    
+    updateDisplay();
+    return { minValue, maxValue };
+}
+
         let map;
         let shapesMap = new Map();
 
@@ -629,6 +881,7 @@
 
             let allFeatures = await load_data();
             let markersLayer = L.layerGroup();
+            const slider = initSimpleDoubleSlider(allFeatures, markersLayer);
             addMarkers(map, allFeatures, markersLayer);
             updateChart(allFeatures);
 
@@ -637,12 +890,9 @@
             let countriesGeoJSON = JSON.parse(countriesText);
             addCountriesBorders(map, countriesGeoJSON, markersLayer, allFeatures);
 
-            yearFilter.oninput = () => {
-                yearValue.textContent = yearFilter.value;
-                applyFilters(markersLayer, allFeatures);
-            };
 
-            initCoutriesFilter(allFeatures);
+
+            initCountriesFilter(allFeatures);
             initShapeFilter(allFeatures);
             countryFilter.onchange = () => applyFilters(markersLayer, allFeatures);
             shapeFilter.onchange = () => applyFilters(markersLayer, allFeatures);
