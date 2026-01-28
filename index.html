@@ -309,8 +309,6 @@
                 <span id="yearMinValue">1950</span> – <span id="yearMaxValue">1980</span>
             </div>
 
-
-
             <canvas id="timeChart" height="200"></canvas>
             <button id="toggleTheme" style="width:100%; margin-top:10px;">
             🌙 Mode sombre
@@ -597,6 +595,14 @@
             return geojson.features;
         }
 
+        function loadMuseumData(allFeatures, museumIdSet) {
+            return allFeatures.filter(f => museumIdSet.has(f.properties.id));
+        }
+
+        function initMuseumIdSet() {
+            return new Set(Object.keys("1"));
+        }
+
         function focusOnEvent(lat, lon, zoom = 8) {
             map.flyTo([lat, lon], zoom, {
                 animate: true,
@@ -715,6 +721,7 @@
         }
 
         function updateRangeUI(rangeTrack, yearMin, yearMax, yearMinValue, yearMaxValue) {
+            /*dupli de code /!\ */
             let minVal = +yearMin.value;
             let maxVal = +yearMax.value;
 
@@ -756,6 +763,8 @@
             let markersLayer = L.layerGroup();
             addMarkers(map, allFeatures, markersLayer);
             updateChart(allFeatures);
+
+            let museumFeatures = loadMuseumData(allFeatures, initMuseumIdSet()); //usinng these marker make a function that loop through each one
 
             let responseCountries = await fetch("data/countries.json");
             let countriesText = await responseCountries.text();
