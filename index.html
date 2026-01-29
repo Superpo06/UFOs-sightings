@@ -190,7 +190,6 @@
             font-size: 13px;
             color: #a0aec0;
             margin-top: 20px;
-            /* increase to move numbers lower */
         }
         
         .range-slider {
@@ -198,7 +197,6 @@
             width: 100%;
             height: 20px;
         }
-        /* Track background */
         
         .range-track {
             position: absolute;
@@ -211,7 +209,6 @@
             border-radius: 5px;
             overflow: hidden;
         }
-        /* Fill between thumbs */
         
         .range-fill {
             position: absolute;
@@ -221,27 +218,21 @@
             left: var(--min, 0%);
             right: var(--max, 0%);
         }
-        /* Both inputs stacked */
         
         .range-slider input[type="range"] {
             position: absolute;
             top: 50%;
             width: 90%;
             height: 8px;
-            /* match track height */
             background: transparent;
-            /* no track, just thumbs */
             pointer-events: none;
-            /* disable pointer on track */
             -webkit-appearance: none;
             transform: translateY(-50%);
         }
-        /* Thumbs must allow pointer-events */
         
         .range-slider input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             pointer-events: auto;
-            /* allow dragging */
             width: 20px;
             height: 20px;
             border-radius: 50%;
@@ -259,7 +250,6 @@
             border: 1px solid #1a202c;
             cursor: pointer;
         }
-        /* Transparent track */
         
         .range-slider input[type="range"]::-webkit-slider-runnable-track {
             background: transparent;
@@ -316,78 +306,22 @@
     <script>
         "use strict";
 
-        function updateChart(features) {
-            const canvas = document.getElementById("timeChart");
-            const ctx = canvas.getContext("2d");
-
-            /* =========================
-               Configuration
-            ========================= */
-            const PADDING = 35;
-            const GRID_LINES = 5;
-            const POINT_RADIUS = 4;
-
-            const WIDTH = canvas.width - PADDING * 2;
-            const HEIGHT = canvas.height - PADDING * 2;
-
-            /* =========================
-               Clear canvas
-            ========================= */
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            /* =========================
-               Prepare data (counts / year)
-            ========================= */
-            const countsByYear = {};
+        function getCountsByYear(features) {
+            const counts = {};
             features.forEach(f => {
-                const year = f.properties.year;
-                countsByYear[year] = (countsByYear[year] || 0) + 1;
+                const y = f.properties.year;
+                counts[y] = (counts[y] || 0) + 1;
             });
+            const years = Object.keys(counts).map(Number).sort((a, b) => a - b);
+            const values = years.map(y => counts[y]);
+            return {
+                years,
+                values
+            };
+        }
 
-            const years = Object.keys(countsByYear)
-                .map(Number)
-                .sort((a, b) => a - b);
-
-            if (years.length === 0) return;
-
-            const values = years.map(y => countsByYear[y]);
-            const maxValue = Math.max(...values);
-
-            /* =========================
-               Scales
-            ========================= */
-            const xScale = i =>
-                PADDING + (i / (years.length - 1)) * WIDTH;
-
-            const yScale = value =>
-                PADDING + HEIGHT - (value / maxValue) * HEIGHT;
-
-            /* =========================
-               Grid + Y axis labels
-            ========================= */
-            ctx.strokeStyle = "rgba(160,174,192,0.2)";
-            ctx.fillStyle = "#a0aec0";
-            ctx.font = "10px sans-serif";
-            ctx.textAlign = "right";
-            ctx.textBaseline = "middle";
-
-            for (let i = 0; i <= GRID_LINES; i++) {
-                const value = Math.round((maxValue / GRID_LINES) * i);
-                const y = yScale(value);
-
-                // Grid line
-                ctx.beginPath();
-                ctx.moveTo(PADDING, y);
-                ctx.lineTo(PADDING + WIDTH, y);
-                ctx.stroke();
-
-                // Y-axis label
-                ctx.fillText(value, PADDING - 6, y);
-            }
-
-            /* =========================
-               Axes
-            ========================= */
+        function drawAxes(ctx, PADDING, WIDTH, HEIGHT, GRID_LINES, maxValue, years) {
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
             ctx.strokeStyle = "#a0aec0";
             ctx.lineWidth = 1.5;
 
@@ -397,81 +331,85 @@
             ctx.lineTo(PADDING + WIDTH, PADDING + HEIGHT);
             ctx.stroke();
 
-            /* =========================
-               Line gradient
-            ========================= */
-            const gradient = ctx.createLinearGradient(
-                PADDING, 0, PADDING + WIDTH, 0
-            );
-            gradient.addColorStop(0, "#4299e1");
-            gradient.addColorStop(1, "#68d391");
+            ctx.strokeStyle = "rgba(160,174,192,0.2)";
+            ctx.fillStyle = "#a0aec0";
+            ctx.font = "10px sans-serif";
+            ctx.textAlign = "right";
+            ctx.textBaseline = "middle";
 
-            /* =========================
-               Draw line
-            ========================= */
-            ctx.strokeStyle = gradient;
-            ctx.lineWidth = 3;
-            ctx.lineJoin = "round";
-            ctx.lineCap = "round";
+            for (let i = 0; i <= GRID_LINES; i++) {
+                const y = PADDING + HEIGHT - (maxValue / GRID_LINES * i / 1) * HEIGHT / maxValue;
+                ctx.beginPath();
+                ctx.moveTo(PADDING, y);
+                ctx.lineTo(PADDING + WIDTH, y);
+                ctx.stroke();
+                ctx.fillText(Math.round(maxValue / GRID_LINES * i), PADDING - 6, y);
+            }
 
-            ctx.beginPath();
+            ctx.textAlign = "center";
+            ctx.textBaseline = "top";
+            const step = Math.max(1, Math.floor(years.length / 5));
             years.forEach((year, i) => {
-                const x = xScale(i);
-                const y = yScale(values[i]);
-                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                if (i % step === 0 || years.length <= 10) ctx.fillText(year, PADDING + (i / (years.length - 1)) * WIDTH, PADDING + HEIGHT + 8);
             });
-            ctx.stroke();
+        }
 
-            /* =========================
-               Fill under line
-            ========================= */
+        function drawLineAndFill(ctx, years, values, PADDING, WIDTH, HEIGHT, maxValue) {
+            const xScale = i => PADDING + (i / (years.length - 1)) * WIDTH;
+            const yScale = v => PADDING + HEIGHT - (v / maxValue) * HEIGHT;
+
+            // Fill under line
             ctx.fillStyle = "rgba(99,179,237,0.12)";
             ctx.beginPath();
-            years.forEach((year, i) => {
-                const x = xScale(i);
-                const y = yScale(values[i]);
-                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-            });
+            years.forEach((y, i) => i === 0 ? ctx.moveTo(xScale(i), yScale(values[i])) : ctx.lineTo(xScale(i), yScale(values[i])));
             ctx.lineTo(PADDING + WIDTH, PADDING + HEIGHT);
             ctx.lineTo(PADDING, PADDING + HEIGHT);
             ctx.closePath();
             ctx.fill();
 
-            /* =========================
-               Points
-            ========================= */
-            ctx.fillStyle = "#ffffff";
+            // Line gradient
+            const grad = ctx.createLinearGradient(PADDING, 0, PADDING + WIDTH, 0);
+            grad.addColorStop(0, "#4299e1");
+            grad.addColorStop(1, "#68d391");
+            ctx.strokeStyle = grad;
+            ctx.lineWidth = 3;
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            years.forEach((y, i) => i === 0 ? ctx.moveTo(xScale(i), yScale(values[i])) : ctx.lineTo(xScale(i), yScale(values[i])));
+            ctx.stroke();
+
+            // Points
+            ctx.fillStyle = "#fff";
             ctx.strokeStyle = "#4299e1";
             ctx.lineWidth = 2;
-
-            years.forEach((year, i) => {
-                const x = xScale(i);
-                const y = yScale(values[i]);
-
+            years.forEach((y, i) => {
+                const x = xScale(i),
+                    Y = yScale(values[i]);
                 ctx.beginPath();
-                ctx.arc(x, y, POINT_RADIUS, 0, Math.PI * 2);
+                ctx.arc(x, Y, 4, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
             });
+        }
 
-            /* =========================
-               X axis labels (years)
-            ========================= */
-            ctx.fillStyle = "#a0aec0";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "top";
+        function updateChart(features) {
+            const canvas = document.getElementById("timeChart")
+            const ctx = canvas.getContext("2d");
+            const PADDING = 35
+            const GRID_LINES = 5
+            const WIDTH = canvas.width - PADDING * 2
+            const HEIGHT = canvas.height - PADDING * 2;
 
-            const step = Math.max(1, Math.floor(years.length / 5));
+            const {
+                years,
+                values
+            } = getCountsByYear(features);
+            if (values.length === 0) return;
+            const maxValue = Math.max(...values);
 
-            years.forEach((year, i) => {
-                if (i % step === 0 || years.length <= 10) {
-                    ctx.fillText(
-                        year,
-                        xScale(i),
-                        PADDING + HEIGHT + 8
-                    );
-                }
-            });
+            drawAxes(ctx, PADDING, WIDTH, HEIGHT, GRID_LINES, maxValue, years);
+            drawLineAndFill(ctx, years, values, PADDING, WIDTH, HEIGHT, maxValue);
         }
 
         function highlightFeature(e) {
@@ -584,7 +522,7 @@
                         }
                     });
 
-                    if (feature.properties && feature.properties.name) { // to verify what ir does
+                    if (feature.properties && feature.properties.name) {
                         layer.bindPopup(feature.properties.name.common);
                     }
                 }
@@ -618,7 +556,6 @@
             for (const [feature, marker] of markerMap.entries()) {
                 focusOnEvent(feature, marker);
 
-                // wait before moving to the next one
                 await new Promise(resolve => setTimeout(resolve, delay));
             }
         }
@@ -787,6 +724,7 @@
 
         let map;
         let tileLayer = null;
+        let visit = false;
 
         window.onload = async() => {
             map = L.map('map', {
