@@ -1,7 +1,8 @@
-<html lang="fr">
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Convertisseur CSV → GeoJSON avec codes pays</title>
+    <title>CSV to GeoJSON Converter with Country Codes</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -125,40 +126,40 @@
     </style>
 </head>
 <body>
-    <h1>Convertisseur CSV → GeoJSON avec codes pays</h1>
+    <h1>CSV to GeoJSON Converter with Country Codes</h1>
     
     <div class="info-box">
         <h3>📋 Instructions :</h3>
         <ol>
-            <li>Sélectionnez le fichier de mapping pays (CSV avec colonnes Name,Code)</li>
-            <li>Sélectionnez le fichier CSV OVNI à convertir</li>
-            <li>Cliquez sur "Convertir en GeoJSON"</li>
-            <li>Téléchargez le résultat</li>
+            <li>Select the country mapping file (CSV with columns Name,Code)</li>
+            <li>Select the UFO CSV file to convert</li>
+            <li>Click "Convert to GeoJSON"</li>
+            <li>Download the result</li>
         </ol>
     </div>
     
     <div class="file-section">
-        <h3>1. 📁 Fichier de mapping des pays</h3>
-        <p><small>Format CSV avec en-tête : <code>Name,Code</code></small></p>
+        <h3>1. 📁 Country Mapping File</h3>
+        <p><small>Format CSV with header: <code>Name,Code</code></small></p>
         <div class="file-input" id="mappingDropArea">
-            <p>Cliquez ici ou déposez votre fichier de mapping CSV</p>
+            <p>Click here or drop your mapping CSV file</p>
             <input type="file" id="mappingFile" accept=".csv" style="display: none;">
         </div>
-        <div id="mappingFileInfo">Aucun fichier de mapping sélectionné</div>
-        <div id="mappingStatus">⌛ En attente du fichier de mapping...</div>
+        <div id="mappingFileInfo">No mapping file selected</div>
+        <div id="mappingStatus">⌛ Waiting for mapping file...</div>
     </div>
     
     <div class="file-section">
-        <h3>2. 📊 Fichier CSV OVNI à convertir</h3>
-        <p><small>Format CSV avec point-virgule comme séparateur (16+ colonnes)</small></p>
+        <h3>2. 📊 UFO CSV File to Convert</h3>
+        <p><small>Format CSV with semicolon as separator</small></p>
         <div class="file-input" id="dataDropArea">
-            <p>Cliquez ici ou déposez votre fichier CSV OVNI</p>
+            <p>Click here or drop your UFO CSV file</p>
             <input type="file" id="dataFile" accept=".csv" style="display: none;">
         </div>
-        <div id="fileInfo">Aucun fichier OVNI sélectionné</div>
+        <div id="fileInfo">No UFO CSV file selected</div>
     </div>
     
-    <button id="convertBtn" disabled>Convertir en GeoJSON</button>
+    <button id="convertBtn" disabled>Convert to GeoJSON</button>
     
     <div class="progress" id="progress">
         <div class="progress-bar">
@@ -170,13 +171,13 @@
     <div class="error" id="error"></div>
     
     <div class="result" id="result">
-        <h3 style="color: #4CAF50;">✅ Conversion réussie !</h3>
+        <h3 style="color: #4CAF50;">✅ Conversion successful!</h3>
         <div id="status"></div>
         
         <div class="stats" id="stats"></div>
-        
-        <button id="downloadBtn" style="background: #2196F3;">📥 Télécharger GeoJSON</button>
-        <button id="resetBtn" style="background: #ff9800;">🔄 Recommencer</button>
+
+        <button id="downloadBtn" style="background: #2196F3;">📥 Download GeoJSON</button>
+        <button id="resetBtn" style="background: #ff9800;">🔄 Reset</button>
     </div>
 
     <script>
@@ -224,7 +225,7 @@
                 handleMappingFileSelection(file);
                 mappingFileInput.files = e.dataTransfer.files;
             } else {
-                showError('Veuillez déposer un fichier CSV pour le mapping');
+                showError('Please drop a valid CSV mapping file');
             }
         });
         
@@ -255,7 +256,7 @@
                 handleDataFileSelection(file);
                 dataFileInput.files = e.dataTransfer.files;
             } else {
-                showError('Veuillez déposer un fichier CSV OVNI');
+                showError('Please drop a valid UFO CSV file');
             }
         });
         
@@ -272,8 +273,8 @@
             if (!file) return;
             
             const sizeKB = (file.size / 1024).toFixed(1);
-            mappingFileInfo.textContent = `Fichier de mapping : ${file.name} (${sizeKB} KB)`;
-            mappingStatus.innerHTML = `⌛ Chargement du mapping...`;
+            mappingFileInfo.textContent = `Mapping file: ${file.name} (${sizeKB} KB)`;
+            mappingStatus.innerHTML = `⌛ Loading mapping...`;
             mappingStatus.className = 'status-waiting';
             
             try {
@@ -281,16 +282,16 @@
                 const success = parseMappingCSV(text);
                 
                 if (success) {
-                    mappingStatus.innerHTML = `✅ Mapping chargé : ${Object.keys(countryMapping).length} pays`;
+                    mappingStatus.innerHTML = `✅ Mapping loaded: ${Object.keys(countryMapping).length} countries`;
                     mappingStatus.className = 'status-ok';
                     checkReadyState();
                 } else {
-                    mappingStatus.innerHTML = `❌ Format invalide. Attendu: Name,Code`;
+                    mappingStatus.innerHTML = `❌ Invalid format. Expected: Name,Code`;
                     mappingStatus.className = 'status-error';
                     countryMapping = {};
                 }
             } catch (error) {
-                mappingStatus.innerHTML = `❌ Erreur de lecture : ${error.message}`;
+                mappingStatus.innerHTML = `❌ Error reading file: ${error.message}`;
                 mappingStatus.className = 'status-error';
                 countryMapping = {};
             }
@@ -343,7 +344,7 @@
         function handleDataFileSelection(file) {
             if (file) {
                 const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-                fileInfo.textContent = `Fichier OVNI : ${file.name} (${sizeMB} MB)`;
+                fileInfo.textContent = `UFO file : ${file.name} (${sizeMB} MB)`;
                 hideError();
                 checkReadyState();
             }
@@ -356,9 +357,9 @@
             convertBtn.disabled = !(hasMapping && hasDataFile);
             
             if (hasMapping && hasDataFile) {
-                convertBtn.textContent = "Convertir en GeoJSON ✅";
+                convertBtn.textContent = "Convert to GeoJSON ✅";
             } else {
-                convertBtn.textContent = "Convertir en GeoJSON";
+                convertBtn.textContent = "Convert to GeoJSON";
             }
         }
         
@@ -447,7 +448,7 @@
                 const dataLines = lines.slice(1).filter(line => line.trim());
                 
                 if (dataLines.length === 0) {
-                    throw new Error('Aucune donnée trouvée dans le fichier');
+                    throw new Error('No data found in UFO CSV file.');
                 }
                 
                 const features = [];
@@ -517,7 +518,7 @@
                 }
                 
                 if (features.length === 0) {
-                    throw new Error('Aucune donnée valide n\'a pu être convertie');
+                    throw new Error('No valid UFO observations found after conversion.');
                 }
                 
                 // Créer le GeoJSON
@@ -536,17 +537,17 @@
                 updateProgress(100);
                 
                 document.getElementById('stats').innerHTML = `
-                    <strong>📊 Résultats :</strong><br><br>
-                    • Observations converties : <strong>${conversionStats.total.toLocaleString()}</strong><br>
-                    • Lignes ignorées : <strong>${conversionStats.errors.toLocaleString()}</strong><br>
-                    • Taux de réussite : <strong>${conversionStats.successRate}%</strong><br>
-                    • Pays dans le mapping : <strong>${Object.keys(countryMapping).length}</strong>
+                    <strong>📊 RResults:</strong><br><br>
+                    • Observations converted : <strong>${conversionStats.total.toLocaleString()}</strong><br>
+                    • Lines ignored : <strong>${conversionStats.errors.toLocaleString()}</strong><br>
+                    • Success rate : <strong>${conversionStats.successRate}%</strong><br>
+                    • Countries in mapping : <strong>${Object.keys(countryMapping).length}</strong>
                 `;
                 
                 document.getElementById('status').innerHTML = `
                     <div style="color: #4CAF50; font-weight: bold;">
-                        ✅ Conversion terminée avec succès !<br>
-                        Les codes pays ont été ajoutés depuis votre fichier de mapping.
+                        ✅ Conversion completed successfully !<br>
+                        The country codes have been added from your mapping file.
                     </div>
                 `;
                 
@@ -567,7 +568,7 @@
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (e) => resolve(e.target.result);
-                reader.onerror = () => reject(new Error('Erreur de lecture du fichier'));
+                reader.onerror = () => reject(new Error('Error reading file'));
                 reader.readAsText(file, 'UTF-8');
             });
         }
@@ -588,7 +589,7 @@
                 URL.revokeObjectURL(url);
                 
             } catch (error) {
-                showError('Erreur lors du téléchargement: ' + error.message);
+                showError('Error during download: ' + error.message);
             }
         }
         
@@ -600,15 +601,15 @@
             mappingFileInput.value = '';
             dataFileInput.value = '';
             
-            mappingFileInfo.textContent = 'Aucun fichier de mapping sélectionné';
-            fileInfo.textContent = 'Aucun fichier OVNI sélectionné';
+            mappingFileInfo.textContent = 'No mapping file selected';
+            fileInfo.textContent = 'No UFO file selected';
             
-            mappingStatus.innerHTML = '⌛ En attente du fichier de mapping...';
+            mappingStatus.innerHTML = '⌛ Waiting for mapping file...';
             mappingStatus.className = 'status-waiting';
             
             document.getElementById('result').style.display = 'none';
             convertBtn.disabled = true;
-            convertBtn.textContent = "Convertir en GeoJSON";
+            convertBtn.textContent = "Convert to GeoJSON";
             hideError();
             updateProgress(0);
         }
