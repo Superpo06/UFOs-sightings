@@ -600,13 +600,26 @@
         }
 
         function initMuseumIdSet() {
-            return new Set(Object.keys("1"));
+            return new Set(["1", "5", "10", "15", "20", "25", "30", "35", "40", "45", "50"]);
         }
+
+        async function visit(allFeatures, delay = 6000) {
+            for (const f of allFeatures) {
+                const lat = f.geometry.coordinates[1];
+                const lon = f.geometry.coordinates[0];
+
+                focusOnEvent(lat, lon, 8);
+
+                // wait before moving to the next one
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+
 
         function focusOnEvent(lat, lon, zoom = 8) {
             map.flyTo([lat, lon], zoom, {
                 animate: true,
-                duration: 1
+                duration: 3
             });
         }
 
@@ -790,7 +803,6 @@
 
             updateRangeUI(rangeTrack, yearMin, yearMax, yearMinValue, yearMaxValue);
 
-
             initCoutriesFilter(allFeatures);
             initShapeFilter(allFeatures);
             countryFilter.onchange = () => applyFilters(markersLayer, allFeatures);
@@ -801,6 +813,7 @@
 
             setLightButton(tileLayer, sidepanel, lightmode);
             applyFilters(markersLayer, allFeatures);
+            visit(museumFeatures);
         };
     </script>
 </body>
