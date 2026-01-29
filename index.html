@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 
 <head>
     <meta charset="utf-8">
-    <title>Le Musée des OVNIs</title>
+    <title>The UFOs Museum</title>
 
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
@@ -284,21 +284,20 @@
     <button id="togglePanel">☰</button>
     <div id="sidepanel" class="collapsed">
         <div id="panelContent">
-            <h2>Observations OVNI</h2>
+            <h2>UFOs sightings</h2>
 
-            <label for="countryFilter">Pays</label>
+            <label for="countryFilter">Country</label>
             <select id="countryFilter">
-            <option value="" disabled selected>— Sélectionner un pays —</option>
-            <option value="all">Tous les pays</option>
+            <option value="" disabled selected>— Select a country —</option>
+            <option value="all">All countries</option>
         </select>
 
-            <label for="shapeFilter">Forme de l'observation</label>
+            <label for="shapeFilter">Shape of the sighting</label>
             <select id="shapeFilter">
-            <option value="all">Toutes les formes</option>
+            <option value="all">All shapes</option>
         </select>
 
-            <label>Années</label>
-
+            <label>Years</label>
             <div class="range-slider">
                 <input type="range" id="yearMin" min="1900" max="2025" value="1950">
                 <input type="range" id="yearMax" min="1900" max="2025" value="1980">
@@ -311,7 +310,7 @@
 
             <canvas id="timeChart" height="200"></canvas>
             <button id="toggleTheme" style="width:100%; margin-top:10px;">
-            🌙 Mode sombre
+            🌙 Dark mode
         </button>
         </div>
     </div>
@@ -495,9 +494,9 @@
                     <h3 style="margin: 0 0 10px 0; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
                         ${props.city}, ${props.state}
                     </h3>
-                    <p style="margin: 5px 0;"><strong>Forme :</strong> ${props.shape}</p>
-                    <p style="margin: 5px 0;"><strong>Année :</strong> ${props.year}</p>
-                    <p style="margin: 5px 0;"><strong>Durée :</strong> ${props.duration}</p>
+                    <p style="margin: 5px 0;"><strong>Shape :</strong> ${props.shape}</p>
+                    <p style="margin: 5px 0;"><strong>Year :</strong> ${props.year}</p>
+                    <p style="margin: 5px 0;"><strong>Duration :</strong> ${props.duration}</p>
                     <p style="margin: 10px 0 0 0; color: #4a5568; font-size: 14px;">
                         ${props.description}
                     </p>
@@ -582,7 +581,7 @@
                             const code = feature.properties.cca2.toUpperCase();
                             if (!code) return;
 
-                            console.log("Pays cliqué :", code);
+                            console.log("Country clicked:", code);
                             countryFilter.value = code;
                             applyFilters(markersLayer, MarkerMap);
                         }
@@ -697,7 +696,7 @@
                 lightmode = (lightmode === "dark") ? "light" : "dark";
 
                 toggleTheme.textContent =
-                    lightmode === "dark" ? "🌙 Mode sombre" : "☀️ Mode clair";
+                    lightmode === "dark" ? "🌙 Dark mode" : "☀️ Light mode";
 
                 tileLayer = loadBaseMap(lightmode);
                 updateThemeColors(sidepanel, lightmode);
@@ -734,8 +733,8 @@
             }
 
             countryFilter.innerHTML = `
-        <option value="" disabled selected>— Sélectionner un pays —</option>
-        <option value="all">Tous les pays</option>
+        <option value="" disabled selected>— Select a country —</option>
+        <option value="all">All countries</option>
     `;
 
             [...countryMap.entries()]
