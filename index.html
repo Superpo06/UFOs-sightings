@@ -228,6 +228,7 @@
             pointer-events: none;
             -webkit-appearance: none;
             transform: translateY(-50%);
+            z-index: 3;
         }
         
         .range-slider input[type="range"]::-webkit-slider-thumb {
@@ -426,6 +427,9 @@
 
         function createPopupContent(feature) {
             let props = feature.properties;
+            let imageurltext = '';
+            if (props.imageurl) imageurltext = `<img src="${props.imageurl}" alt="${props.eventName}" style="width:100%; margin-top:10px; border-radius:4px;">`;
+
             return `
                 <div style="font-family: sans-serif; max-width: 300px;">
                     <h3 style="margin: 0 0 10px 0; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">
@@ -437,32 +441,38 @@
                     <p style="margin: 10px 0 0 0; color: #4a5568; font-size: 14px;">
                         ${props.description}
                     </p>
+                    ${imageurltext}
                 </div>
             `;
         }
 
-        function initMarkers(map, features) {
+        function initMarkers(features) {
             let markerMap = new Map();
             for (let f of features) {
-                let lat = f.geometry.coordinates[1];
-                let lon = f.geometry.coordinates[0];
-
-                let popup = createPopupContent(f);
-
-                let marker = L.circleMarker([lat, lon], {
-                        radius: 5,
-                        color: "#4299e1",
-                        weight: 1.5,
-                        fillColor: "#63b3ed",
-                        fillOpacity: 0.7
-                    })
-                    .on("click", () => {
-                        focusOnEvent(f, marker);
-                    })
-                    .bindPopup(popup);
+                let marker = createMarker(f);
                 markerMap.set(f, marker);
             }
             return markerMap;
+        }
+
+        function createMarker(f) {
+            let lat = f.geometry.coordinates[1];
+            let lon = f.geometry.coordinates[0];
+
+            let popup = createPopupContent(f);
+
+            let marker = L.circleMarker([lat, lon], {
+                    radius: 5,
+                    color: "#4299e1",
+                    weight: 1.5,
+                    fillColor: "#63b3ed",
+                    fillOpacity: 0.7,
+                })
+                .on("click", () => {
+                    focusOnEvent(f, marker);
+                })
+                .bindPopup(popup);
+            return marker;
         }
 
         function getFilteredFeatures(markerMap, country, shape, minYear, maxYear) {
@@ -538,20 +548,32 @@
             return geojson.features;
         }
 
-        function loadMuseumData(markerMap, museumIdSet) {
+        async function loadMuseumData(markerMap) {
+            const response = await fetch("data/tour-events.csv");
+            const text = await response.text();
             const museumMarkerMap = new Map();
 
-            for (const [feature, marker] of markerMap.entries()) {
-                const id = Number(feature.properties.id); // ensure numeric
-                if (museumIdSet.has(id)) {
-                    museumMarkerMap.set(feature, marker);
+            const lines = text.split("\n").slice(1);
+
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+
+                const [Id, Event, ImageURL, Description] = line.split(";");
+
+                for (let f of markerMap.keys()) {
+                    if (Number(f.properties.id) === Number(Id) && !(Event === f.properties.eventName)) {
+                        f.description = Description;
+                        f.imageurl = ImageURL;
+                        f.properties.eventName = Event;
+                        let marker = createMarker(f);
+                        markerMap.delete(f)
+                        markerMap.set(f, marker);
+                        museumMarkerMap.set(f, marker);
+                    }
                 }
             }
             return museumMarkerMap;
-        }
-
-        function initMuseumIdSet() {
-            return new Set([1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]);
         }
 
         async function visit(markersLayer, markerMap, delay = 5000) {
@@ -745,35 +767,7 @@
             rangeTrack.style.setProperty("--max", `${maxPercent}%`);
         }
 
-
-        let map;
-        let tileLayer = null;
-        let visiting = false;
-
-        window.onload = async() => {
-            map = L.map('map', {
-                center: [20, 0],
-                zoom: 3,
-                minZoom: 2
-            });
-            map.zoomControl.setPosition('topright');
-
-            let lightmode = "dark";
-            tileLayer = loadBaseMap(lightmode);
-
-            let allFeatures = await load_data();
-            let markersLayer = L.layerGroup().addTo(map);
-            let MarkerMap = initMarkers(map, allFeatures);
-            updateChart(allFeatures);
-
-            let museumMarkerMap = loadMuseumData(MarkerMap, initMuseumIdSet()); //usinng these marker make a function that loop through each one
-
-            let responseCountries = await fetch("data/countries.json");
-            let countriesText = await responseCountries.text();
-            let countriesGeoJSON = JSON.parse(countriesText);
-            addCountriesBorders(map, countriesGeoJSON, markersLayer, MarkerMap);
-
-            //year  range slider 
+        function initSideMenu(allFeatures, markersLayer, MarkerMap, museumMarkerMap, lightmode) {
             const countryFilter = document.getElementById("countryFilter");
             const shapeFilter = document.getElementById("shapeFilter");
             const yearMin = document.getElementById("yearMin");
@@ -804,7 +798,39 @@
             initSidePanelButton(sidepanel);
 
             setLightButton(sidepanel, lightmode);
+            updateChart(allFeatures);
+        }
 
+        let map;
+        let tileLayer = null;
+        let visiting = false;
+
+        window.onload = async() => {
+            //map initialization
+            map = L.map('map', {
+                center: [20, 0],
+                zoom: 3,
+                minZoom: 2
+            });
+            map.zoomControl.setPosition('topright');
+
+            let lightmode = "dark";
+            tileLayer = loadBaseMap(lightmode);
+
+            //data loading
+            let allFeatures = await load_data();
+            let markersLayer = L.layerGroup().addTo(map);
+            let MarkerMap = initMarkers(allFeatures);
+            let museumMarkerMap = await loadMuseumData(MarkerMap);
+
+            //countries borders
+            let responseCountries = await fetch("data/countries.json");
+            let countriesText = await responseCountries.text();
+            let countriesGeoJSON = JSON.parse(countriesText);
+            addCountriesBorders(map, countriesGeoJSON, markersLayer, MarkerMap);
+            //side menu
+            console.log(museumMarkerMap);
+            initSideMenu(allFeatures, markersLayer, MarkerMap, museumMarkerMap, lightmode);
 
             applyFilters(markersLayer, MarkerMap);
         };
