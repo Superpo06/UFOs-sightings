@@ -660,18 +660,22 @@
         }
 
         function loadBaseMap(lightmode, tileLayer) {
-            if (tileLayer) {
-                map.removeLayer(tileLayer);
-            }
-            let mode = (lightmode === "dark") ? '' : '_dark';
-            tileLayer = L.tileLayer(
-                'https://tiles.stadiamaps.com/tiles/stamen_toner' + mode + '/{z}/{x}/{y}{r}.png', {
-                    maxZoom: 20
-                }
-            );
-
-            tileLayer.addTo(map);
-        }
+    if (tileLayer) {
+        map.removeLayer(tileLayer);
+    }
+    
+    let mode = (lightmode === "dark") ? 'dark' : 'light';
+    let url = `https://{s}.basemaps.cartocdn.com/${mode}_all/{z}/{x}/{y}{r}.png`;
+    
+    tileLayer = L.tileLayer(url, {
+        maxZoom: 20,
+        subdomains: 'abcd',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    });
+    
+    tileLayer.addTo(map);
+    return tileLayer;
+}
 
         function setLightButton(tileLayer, sidepanel, lightmode) {
             toggleTheme.onclick = () => {
