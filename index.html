@@ -294,6 +294,10 @@
             </div>
 
             <canvas id="timeChart" height="200"></canvas>
+            <button id="startVisit" style="width:100%; margin-top:10px; background:#48bb78; color:white; border:none; padding:10px; border-radius:4px; cursor:pointer;">
+                🚀 Start Visit
+            </button>
+
             <button id="toggleTheme" style="width:100%; margin-top:10px;">
             🌙 Dark mode
         </button>
@@ -481,18 +485,17 @@
         }
 
         function applyFilters(markersLayer, markerMap) {
-
             const minYear = Math.min(+yearMin.value, +yearMax.value);
             const maxYear = Math.max(+yearMin.value, +yearMax.value);
 
             let filtered = getFilteredFeatures(markerMap, countryFilter.value,
                 shapeFilter.value, minYear, maxYear);
 
-            updateMarkers(filtered, markersLayer);
+            updateMarkers(markersLayer, filtered);
             updateChart([...filtered.keys()]);
         }
 
-        function updateMarkers(markerMap, markersLayer) {
+        function updateMarkers(markersLayer, markerMap) {
             markersLayer.clearLayers();
 
             for (const marker of markerMap.values()) {
@@ -551,22 +554,28 @@
             return new Set([1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]);
         }
 
-        async function visit(markersLayer, markerMap, delay = 6000) {
-            updateMarkers(markerMap, markersLayer);
-            for (const [feature, marker] of markerMap.entries()) {
+        async function visit(markersLayer, markerMap, delay = 5000) {
+            updateMarkers(markersLayer, markerMap);
+            const entries = Array.from(markerMap.entries());
+
+            for (const [feature, marker] of entries) {
+                if (!visiting) break;
                 focusOnEvent(feature, marker);
 
                 await new Promise(resolve => setTimeout(resolve, delay));
             }
+            visiting = false;
+            document.getElementById("startVisit").textContent = "🚀 Start Visit";
+
         }
 
         function focusOnEvent(feature, marker) {
-            const [lon, lat] = feature.geometry.coordinates; // GeoJSON: [lon, lat]
-            const zoom = 8; // ou autre valeur
+            const [lon, lat] = feature.geometry.coordinates;
+            const zoom = 8;
 
             map.flyTo([lat, lon], zoom, {
                 animate: true,
-                duration: 5
+                duration: 3
             });
             marker.openPopup();
         }
@@ -701,6 +710,21 @@
             };
         }
 
+        function initVisitButton(markersLayer, museumMarkerMap) {
+            const startVisitBtn = document.getElementById("startVisit");
+
+            startVisitBtn.onclick = async() => {
+                if (visiting) {
+                    visiting = false;
+                    startVisitBtn.textContent = "🚀 Start Visit";
+                    return;
+                }
+                visiting = true;
+                startVisitBtn.textContent = "⏸️ Pause Visit";
+                await visit(markersLayer, museumMarkerMap);
+            };
+        }
+
         function updateRangeUI(rangeTrack, yearMin, yearMax, yearMinValue, yearMaxValue) {
             let minVal = +yearMin.value;
             let maxVal = +yearMax.value;
@@ -724,7 +748,7 @@
 
         let map;
         let tileLayer = null;
-        let visit = false;
+        let visiting = false;
 
         window.onload = async() => {
             map = L.map('map', {
@@ -772,6 +796,7 @@
 
             initCoutriesFilter(MarkerMap);
             initShapeFilter(MarkerMap);
+            initVisitButton(markersLayer, museumMarkerMap);
             countryFilter.onchange = () => applyFilters(markersLayer, MarkerMap);
             shapeFilter.onchange = () => applyFilters(markersLayer, MarkerMap);
 
