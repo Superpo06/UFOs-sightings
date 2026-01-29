@@ -505,16 +505,15 @@
             `;
         }
 
-        function addMarkers(map, features, markersLayer) {
-            markersLayer.clearLayers(); // to verify what it does
-
+        function initMarkers(map, features) {
+            let markerMap = new Map();
             for (let f of features) {
                 let lat = f.geometry.coordinates[1];
                 let lon = f.geometry.coordinates[0];
 
                 let popup = createPopupContent(f);
 
-                L.circleMarker([lat, lon], {
+                let marker = L.circleMarker([lat, lon], {
                         radius: 5,
                         color: "#4299e1",
                         weight: 1.5,
@@ -522,45 +521,52 @@
                         fillOpacity: 0.7
                     })
                     .on("click", () => {
-                        focusOnEvent(lat, lon, 8);
+                        focusOnEvent(f, marker);
                     })
-                    .bindPopup(popup)
-                    .addTo(markersLayer);
+                    .bindPopup(popup);
+                markerMap.set(f, marker);
             }
-            markersLayer.addTo(map);
+            return markerMap;
         }
 
-        function getFilteredFeatures(selectedCountry, selectedShape, minYear, maxYear, allFeatures) {
-            return allFeatures.filter(f => {
-                return (
-                    (selectedCountry === "all" || selectedCountry === "" ||
-                        f.properties.country_code === selectedCountry) &&
-                    (selectedShape === "all" ||
-                        f.properties.shape === selectedShape) &&
-                    f.properties.year >= minYear &&
-                    f.properties.year <= maxYear
-                );
-            });
-        }
+        function getFilteredFeatures(markerMap, country, shape, minYear, maxYear) {
+            const filteredMap = new Map();
 
-        function applyFilters(markersLayer, allFeatures) {
-            let selectedCountry = countryFilter.value;
-            let selectedShape = shapeFilter.value;
+            for (const [feature, marker] of markerMap.entries()) {
+                const p = feature.properties;
 
-            let minYear = Math.min(+yearMin.value, +yearMax.value);
-            let maxYear = Math.max(+yearMin.value, +yearMax.value);
+                const rightYear = p.year >= minYear && p.year <= maxYear;
+                const rightCountry =
+                    country === "all" || !country || (p.country_code != null && p.country_code.toUpperCase() === country);
+                const rightShape = shape === "all" || p.shape === shape;
 
-            if (minYear > maxYear) {
-                [minYear, maxYear] = [maxYear, minYear];
+                if (rightYear && rightCountry && rightShape) {
+                    filteredMap.set(feature, marker);
+                }
             }
 
-            let filtered = getFilteredFeatures(selectedCountry, selectedShape, minYear, maxYear, allFeatures);
-
-            addMarkers(map, filtered, markersLayer);
-            updateChart(filtered);
+            return filteredMap;
         }
 
-        function addCountriesBorders(map, countriesGeoJSON, markersLayer, allFeatures) {
+        function applyFilters(markersLayer, markerMap) {
+
+            let filtered = getFilteredFeatures(markerMap, countryFilter.value,
+                shapeFilter.value, +yearMin.value, +yearMax.value,
+                markerMap);
+
+            updateMarkers(filtered, markersLayer);
+            updateChart([...filtered.keys()]);
+        }
+
+        function updateMarkers(markerMap, markersLayer) {
+            markersLayer.clearLayers();
+
+            for (const marker of markerMap.values()) {
+                marker.addTo(markersLayer);
+            }
+        }
+
+        function addCountriesBorders(map, countriesGeoJSON, markersLayer, MarkerMap) {
             let countriesLayer = L.geoJSON(countriesGeoJSON, {
                 style: {
                     color: "#68d391",
@@ -578,7 +584,7 @@
 
                             console.log("Pays cliqué :", code);
                             countryFilter.value = code;
-                            applyFilters(markersLayer, allFeatures);
+                            applyFilters(markersLayer, MarkerMap);
                         }
                     });
 
@@ -595,36 +601,45 @@
             return geojson.features;
         }
 
-        function loadMuseumData(allFeatures, museumIdSet) {
-            return allFeatures.filter(f => museumIdSet.has(f.properties.id));
+        function loadMuseumData(markerMap, museumIdSet) {
+            const museumMarkerMap = new Map();
+
+            for (const [feature, marker] of markerMap.entries()) {
+                const id = Number(feature.properties.id); // ensure numeric
+                if (museumIdSet.has(id)) {
+                    museumMarkerMap.set(feature, marker);
+                }
+            }
+            return museumMarkerMap;
         }
 
         function initMuseumIdSet() {
-            return new Set(["1", "5", "10", "15", "20", "25", "30", "35", "40", "45", "50"]);
+            return new Set([1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]);
         }
 
-        async function visit(allFeatures, delay = 6000) {
-            for (const f of allFeatures) {
-                const lat = f.geometry.coordinates[1];
-                const lon = f.geometry.coordinates[0];
-
-                focusOnEvent(lat, lon, 8);
+        async function visit(markersLayer, markerMap, delay = 6000) {
+            updateMarkers(markerMap, markersLayer);
+            for (const [feature, marker] of markerMap.entries()) {
+                focusOnEvent(feature, marker);
 
                 // wait before moving to the next one
                 await new Promise(resolve => setTimeout(resolve, delay));
             }
         }
 
+        function focusOnEvent(feature, marker) {
+            const [lon, lat] = feature.geometry.coordinates; // GeoJSON: [lon, lat]
+            const zoom = 8; // ou autre valeur
 
-        function focusOnEvent(lat, lon, zoom = 8) {
             map.flyTo([lat, lon], zoom, {
                 animate: true,
-                duration: 3
+                duration: 5
             });
+            marker.openPopup();
         }
 
         function updateThemeColors(sidepanel, lightmode) {
-            if (lightmode === "dark") {
+            if (lightmode === "light") {
                 // Mode sombre
                 sidepanel.style.background = 'rgba(247, 250, 252, 0.95)';
                 sidepanel.style.color = '#2d3748';
@@ -659,45 +674,45 @@
             }
         }
 
-        function loadBaseMap(lightmode, tileLayer) {
-    if (tileLayer) {
-        map.removeLayer(tileLayer);
-    }
-    
-    let mode = (lightmode === "dark") ? 'dark' : 'light';
-    let url = `https://{s}.basemaps.cartocdn.com/${mode}_all/{z}/{x}/{y}{r}.png`;
-    
-    tileLayer = L.tileLayer(url, {
-        maxZoom: 20,
-        subdomains: 'abcd',
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-    });
-    
-    tileLayer.addTo(map);
-    return tileLayer;
-}
+        function loadBaseMap(lightmode) {
+            if (tileLayer) {
+                map.removeLayer(tileLayer);
+            }
 
-        function setLightButton(tileLayer, sidepanel, lightmode) {
+            let mode = (lightmode === "dark") ? 'dark' : 'light';
+            let url = `https://{s}.basemaps.cartocdn.com/${mode}_all/{z}/{x}/{y}{r}.png`;
+
+            tileLayer = L.tileLayer(url, {
+                maxZoom: 20,
+                subdomains: 'abcd',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            });
+
+            tileLayer.addTo(map);
+            return tileLayer;
+        }
+
+        function setLightButton(sidepanel, lightmode) {
             toggleTheme.onclick = () => {
                 lightmode = (lightmode === "dark") ? "light" : "dark";
 
                 toggleTheme.textContent =
                     lightmode === "dark" ? "🌙 Mode sombre" : "☀️ Mode clair";
 
-                loadBaseMap(lightmode, tileLayer);
+                tileLayer = loadBaseMap(lightmode);
                 updateThemeColors(sidepanel, lightmode);
             };
         }
 
-        function initShapeFilter(allFeatures) {
+        function initShapeFilter(MarkerMap) {
             let shapesMap = new Map();
             // Populate shape filter
-            allFeatures.forEach(f => {
+            for (let f of MarkerMap.keys()) {
                 const shape = f.properties.shape;
-                if (!shape) return;
+                if (!shape) continue;
 
                 shapesMap.set(shape, (shapesMap.get(shape) || 0) + 1);
-            });
+            }
 
             [...shapesMap.entries()].forEach(([shape, count]) => {
                 const opt = document.createElement("option");
@@ -707,26 +722,34 @@
             });
         }
 
-        function initCoutriesFilter(allFeatures) {
+        function initCoutriesFilter(MarkerMap) {
             let countryMap = new Map();
-            allFeatures.forEach(f => {
-                if (f.properties.country_code && f.properties.country) {
-                    countryMap.set(f.properties.country_code, f.properties.country);
-                }
-            });
-            let sortedCountries = Array.from(countryMap.entries())
-                .map(([code, name]) => ({
+            for (let feature of MarkerMap.keys()) {
+                const code = feature.properties.country_code;
+                const name = feature.properties.country;
+
+                if (!code || !name) continue;
+
+                countryMap.set(code.toUpperCase(), name);
+            }
+
+            countryFilter.innerHTML = `
+        <option value="" disabled selected>— Sélectionner un pays —</option>
+        <option value="all">Tous les pays</option>
+    `;
+
+            [...countryMap.entries()]
+            .map(([code, name]) => ({
                     code,
                     name
                 }))
-                .sort((a, b) => a.name.localeCompare(b.name));
-
-            sortedCountries.forEach(country => {
-                let opt = document.createElement("option");
-                opt.value = country.code;
-                opt.textContent = country.name;
-                countryFilter.appendChild(opt);
-            });
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .forEach(country => {
+                    const opt = document.createElement("option");
+                    opt.value = country.code;
+                    opt.textContent = country.name;
+                    countryFilter.appendChild(opt);
+                });
         }
 
         function initSidePanelButton(sidepanel) {
@@ -761,8 +784,8 @@
             rangeTrack.style.setProperty("--max", `${maxPercent}%`);
         }
 
-
         let map;
+        let tileLayer = null;
 
         window.onload = async() => {
             map = L.map('map', {
@@ -773,22 +796,23 @@
             map.zoomControl.setPosition('topright');
 
             let lightmode = "dark";
-            let tileLayer;
-            loadBaseMap(lightmode, tileLayer);
+            tileLayer = loadBaseMap(lightmode);
 
             let allFeatures = await load_data();
-            let markersLayer = L.layerGroup();
-            addMarkers(map, allFeatures, markersLayer);
+            let markersLayer = L.layerGroup().addTo(map);
+            let MarkerMap = initMarkers(map, allFeatures);
             updateChart(allFeatures);
 
-            let museumFeatures = loadMuseumData(allFeatures, initMuseumIdSet()); //usinng these marker make a function that loop through each one
+            let museumMarkerMap = loadMuseumData(MarkerMap, initMuseumIdSet()); //usinng these marker make a function that loop through each one
 
             let responseCountries = await fetch("data/countries.json");
             let countriesText = await responseCountries.text();
             let countriesGeoJSON = JSON.parse(countriesText);
-            addCountriesBorders(map, countriesGeoJSON, markersLayer, allFeatures);
+            addCountriesBorders(map, countriesGeoJSON, markersLayer, MarkerMap);
 
-            //year  range slider    
+            //year  range slider 
+            const countryFilter = document.getElementById("countryFilter");
+            const shapeFilter = document.getElementById("shapeFilter");
             const yearMin = document.getElementById("yearMin");
             const yearMax = document.getElementById("yearMax");
             const yearMinValue = document.getElementById("yearMinValue");
@@ -797,29 +821,28 @@
 
             yearMin.oninput = () => {
                 updateRangeUI(rangeTrack, yearMin, yearMax, yearMinValue, yearMaxValue);
-                applyFilters(markersLayer, allFeatures);
+                applyFilters(markersLayer, MarkerMap);
             };
 
             yearMax.oninput = () => {
                 updateRangeUI(rangeTrack, yearMin, yearMax, yearMinValue, yearMaxValue);
-                applyFilters(markersLayer, allFeatures);
+                applyFilters(markersLayer, MarkerMap);
             };
 
             updateRangeUI(rangeTrack, yearMin, yearMax, yearMinValue, yearMaxValue);
 
-            initCoutriesFilter(allFeatures);
-            initShapeFilter(allFeatures);
-            countryFilter.onchange = () => applyFilters(markersLayer, allFeatures);
-            shapeFilter.onchange = () => applyFilters(markersLayer, allFeatures);
+            initCoutriesFilter(MarkerMap);
+            initShapeFilter(MarkerMap);
+            countryFilter.onchange = () => applyFilters(markersLayer, MarkerMap);
+            shapeFilter.onchange = () => applyFilters(markersLayer, MarkerMap);
 
             const sidepanel = document.getElementById("sidepanel");
             initSidePanelButton(sidepanel);
 
-            setLightButton(tileLayer, sidepanel, lightmode);
-            applyFilters(markersLayer, allFeatures);
-            visit(museumFeatures);
+            setLightButton(sidepanel, lightmode);
+
+
+            applyFilters(markersLayer, MarkerMap);
         };
     </script>
 </body>
-
-</html>
