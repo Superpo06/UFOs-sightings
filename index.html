@@ -25,14 +25,6 @@
             right: 0;
             bottom: 0;
         }
-        /* Panneau normal */
-        
-         :root {
-            --thumb-size: 28px;
-            /* size of the slider thumb */
-            --track-height: 16px;
-            /* new height of the slider track */
-        }
         
         #sidepanel {
             position: absolute;
@@ -140,7 +132,7 @@
         
         input[type="range"] {
             -webkit-appearance: none;
-            height: 6px;
+            height: 8px;
             background: #4a5568;
             border-radius: 3px;
             margin-top: 10px;
@@ -194,86 +186,86 @@
             background: #3182ce;
         }
         
+        .range-values {
+            font-size: 13px;
+            color: #a0aec0;
+            margin-top: 20px;
+            /* increase to move numbers lower */
+        }
+        
         .range-slider {
             position: relative;
-            height: var(--thumb-size);
-            /* container height matches thumb */
-            margin-top: 12px;
-            display: flex;
-            align-items: center;
+            width: 100%;
+            height: 20px;
         }
-        /* Track background stays slim */
+        /* Track background */
         
         .range-track {
             position: absolute;
-            top: 50%;
-            left: 0;
-            width: 100%;
-            height: var(--track-height);
-            background: #4a5568;
-            border-radius: calc(var(--track-height)/2);
+            top: 100%;
+            left: 5%;
+            width: 90%;
+            height: 12px;
             transform: translateY(-50%);
-            z-index: 0;
+            background: #4a5568;
+            border-radius: 5px;
             overflow: hidden;
         }
-        /* Highlighted range */
+        /* Fill between thumbs */
         
-        .range-track::before {
-            content: "";
+        .range-fill {
             position: absolute;
             height: 100%;
             background: #63b3ed;
-            border-radius: calc(var(--track-height)/2);
+            border-radius: 4px;
             left: var(--min, 0%);
-            width: calc(100% - var(--min, 0%) - var(--max, 0%));
+            right: var(--max, 0%);
         }
-        /* Slider input */
+        /* Both inputs stacked */
         
         .range-slider input[type="range"] {
-            -webkit-appearance: none;
             position: absolute;
             top: 50%;
-            transform: translateY(-50%);
-            width: 100%;
+            width: 90%;
+            height: 8px;
+            /* match track height */
+            background: transparent;
+            /* no track, just thumbs */
             pointer-events: none;
-            /* only thumbs are draggable */
-            background: none;
-            z-index: 1;
-            height: var(--track-height);
+            /* disable pointer on track */
+            -webkit-appearance: none;
+            transform: translateY(-50%);
         }
-        /* WebKit thumb */
+        /* Thumbs must allow pointer-events */
         
         .range-slider input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             pointer-events: auto;
-            width: var(--thumb-size);
-            height: var(--thumb-size);
-            background: #4299e1;
+            /* allow dragging */
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
+            background: #4299e1;
+            border: 1px solid #1a202c;
             cursor: pointer;
-            position: relative;
-            z-index: 2;
-            margin-top: calc((var(--track-height) - var(--thumb-size)) / 2);
-            /* align center */
         }
-        /* Firefox thumb */
         
         .range-slider input[type="range"]::-moz-range-thumb {
             pointer-events: auto;
-            width: var(--thumb-size);
-            height: var(--thumb-size);
-            background: #4299e1;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            border: none;
+            background: #4299e1;
+            border: 1px solid #1a202c;
             cursor: pointer;
-            position: relative;
-            z-index: 2;
-            margin-top: calc((var(--track-height) - var(--thumb-size)) / 2);
         }
-        /* Firefox track */
+        /* Transparent track */
+        
+        .range-slider input[type="range"]::-webkit-slider-runnable-track {
+            background: transparent;
+        }
         
         .range-slider input[type="range"]::-moz-range-track {
-            height: var(--track-height);
             background: transparent;
         }
     </style>
@@ -299,9 +291,12 @@
 
             <label>Years</label>
             <div class="range-slider">
+                <div class="range-track">
+                    <div class="range-fill"></div>
+                </div>
+
                 <input type="range" id="yearMin" min="1900" max="2025" value="1950">
                 <input type="range" id="yearMax" min="1900" max="2025" value="1980">
-                <div class="range-track"></div>
             </div>
 
             <div class="range-values">
@@ -549,9 +544,11 @@
 
         function applyFilters(markersLayer, markerMap) {
 
+            const minYear = Math.min(+yearMin.value, +yearMax.value);
+            const maxYear = Math.max(+yearMin.value, +yearMax.value);
+
             let filtered = getFilteredFeatures(markerMap, countryFilter.value,
-                shapeFilter.value, +yearMin.value, +yearMax.value,
-                markerMap);
+                shapeFilter.value, minYear, maxYear);
 
             updateMarkers(filtered, markersLayer);
             updateChart([...filtered.keys()]);
@@ -700,6 +697,14 @@
 
                 tileLayer = loadBaseMap(lightmode);
                 updateThemeColors(sidepanel, lightmode);
+
+                updateRangeUI(
+                    document.querySelector(".range-track"),
+                    yearMin,
+                    yearMax,
+                    yearMinValue,
+                    yearMaxValue
+                );
             };
         }
 
@@ -760,7 +765,6 @@
         }
 
         function updateRangeUI(rangeTrack, yearMin, yearMax, yearMinValue, yearMaxValue) {
-            /*dupli de code /!\ */
             let minVal = +yearMin.value;
             let maxVal = +yearMax.value;
 
@@ -773,15 +777,13 @@
             const sliderMax = +yearMin.max;
             const range = sliderMax - sliderMin;
 
-            const minNorm = (minVal - sliderMin) / range;
-            const maxNorm = (maxVal - sliderMin) / range;
-
-            const minPercent = minNorm * 100;
-            const maxPercent = (1 - maxNorm) * 100;
+            const minPercent = ((minVal - sliderMin) / range) * 100;
+            const maxPercent = ((sliderMax - maxVal) / range) * 100;
 
             rangeTrack.style.setProperty("--min", `${minPercent}%`);
             rangeTrack.style.setProperty("--max", `${maxPercent}%`);
         }
+
 
         let map;
         let tileLayer = null;
