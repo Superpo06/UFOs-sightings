@@ -286,8 +286,8 @@
                     <div class="range-fill"></div>
                 </div>
 
-                <input type="range" id="yearMin" min="1900" max="2025" value="1950">
-                <input type="range" id="yearMax" min="1900" max="2025" value="1980">
+                <input type="range" id="yearMin" min="1900" max="2027" value="1950">
+                <input type="range" id="yearMax" min="1900" max="2027" value="1980">
             </div>
 
             <div class="range-values">
@@ -529,7 +529,6 @@
                             const code = feature.properties.cca2.toUpperCase();
                             if (!code) return;
 
-                            console.log("Country clicked:", code);
                             countryFilter.value = code;
                             applyFilters(markersLayer, MarkerMap);
                         }
@@ -552,30 +551,42 @@
             const response = await fetch("data/tour-events.csv");
             const text = await response.text();
             const museumMarkerMap = new Map();
-
-            const lines = text.split("\n").slice(1);
+            const lines = text.split("\n").slice(1); // skip header
 
             for (let line of lines) {
                 line = line.trim();
                 if (!line) continue;
 
                 const [Id, Event, ImageURL, Description] = line.split(";");
+                const targetId = Number(Id);
 
-                for (let f of markerMap.keys()) {
-                    if (Number(f.properties.id) === Number(Id) && !(Event === f.properties.eventName)) {
-                        f.description = Description;
-                        f.imageurl = ImageURL;
-                        f.properties.eventName = Event;
-                        let marker = createMarker(f);
-                        markerMap.delete(f)
-                        markerMap.set(f, marker);
-                        museumMarkerMap.set(f, marker);
+                // Find all features matching this ID
+                const matchingFeatures = [];
+
+                for (const feature of markerMap.keys()) {
+                    if (Number(feature.properties.id) === targetId) {
+                        matchingFeatures.push(feature);
                     }
                 }
+
+                if (matchingFeatures.length === 0) continue;
+
+                for (const feature of matchingFeatures) {
+                    markerMap.delete(feature);
+                }
+
+                const feature = matchingFeatures[0];
+                feature.properties.eventName = Event;
+                feature.properties.description = Description;
+                feature.properties.imageurl = ImageURL;
+
+                const marker = createMarker(feature);
+                markerMap.set(feature, marker);
+                museumMarkerMap.set(feature, marker);
             }
+
             return museumMarkerMap;
         }
-
         async function visit(markersLayer, markerMap, delay = 5000) {
             updateMarkers(markersLayer, markerMap);
             const entries = Array.from(markerMap.entries());
@@ -602,7 +613,7 @@
             marker.openPopup();
         }
 
-       function updateThemeColors(sidepanel, lightmode) {
+        function updateThemeColors(sidepanel, lightmode) {
             if (lightmode === "light") {
                 sidepanel.style.background = 'rgba(247, 250, 252, 0.95)';
                 sidepanel.style.color = '#2d3748';
@@ -612,7 +623,7 @@
                 });
 
                 document.querySelectorAll('select, input').forEach(el => {
-                    el.style.background = el.type === 'range' ? 'transparent' : '#ffffff'; 
+                    el.style.background = el.type === 'range' ? 'transparent' : '#ffffff';
                     el.style.color = '#2d3748';
                     el.style.borderColor = '#cbd5e0';
                 });
@@ -633,7 +644,7 @@
 
                 document.querySelector('h2').style.color = '#ffffff';
             }
-    }
+        }
 
         function loadBaseMap(lightmode) {
             if (tileLayer) {
@@ -826,7 +837,6 @@
             let countriesGeoJSON = JSON.parse(countriesText);
             addCountriesBorders(map, countriesGeoJSON, markersLayer, MarkerMap);
             //side menu
-            console.log(museumMarkerMap);
             initSideMenu(allFeatures, markersLayer, MarkerMap, museumMarkerMap, lightmode);
 
             applyFilters(markersLayer, MarkerMap);
