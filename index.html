@@ -602,9 +602,8 @@
             marker.openPopup();
         }
 
-        function updateThemeColors(sidepanel, lightmode) {
+       function updateThemeColors(sidepanel, lightmode) {
             if (lightmode === "light") {
-                // Mode sombre
                 sidepanel.style.background = 'rgba(247, 250, 252, 0.95)';
                 sidepanel.style.color = '#2d3748';
 
@@ -613,30 +612,28 @@
                 });
 
                 document.querySelectorAll('select, input').forEach(el => {
-                    el.style.background = '#ffffff';
+                    el.style.background = el.type === 'range' ? 'transparent' : '#ffffff'; 
                     el.style.color = '#2d3748';
                     el.style.borderColor = '#cbd5e0';
                 });
 
                 document.querySelector('h2').style.color = '#2d3748';
             } else {
-                // Mode clair
                 sidepanel.style.background = 'rgba(40, 44, 52, 0.95)';
                 sidepanel.style.color = '#e6e6e6';
-
                 document.querySelectorAll('label').forEach(label => {
                     label.style.color = '#cbd5e0';
                 });
 
                 document.querySelectorAll('select, input').forEach(el => {
-                    el.style.background = '#2d3748';
+                    el.style.background = el.type === 'range' ? 'transparent' : '#2d3748';
                     el.style.color = '#e6e6e6';
                     el.style.borderColor = '#4a5568';
                 });
 
                 document.querySelector('h2').style.color = '#ffffff';
             }
-        }
+    }
 
         function loadBaseMap(lightmode) {
             if (tileLayer) {
